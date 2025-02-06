@@ -86,6 +86,7 @@
     .day-cell.available {
       background-color: #e8fbe8;
       color: #28a745;
+      cursor: pointer;
     }
     .day-cell.no-data {
       background-color: #f9f9f9;
@@ -98,7 +99,6 @@
       margin-top: 5px;
     }
     .day-cell.selected {
-      /* チェックイン日として選択されたセルのハイライト */
       border: 2px solid #ff8c00;
     }
     /* 予約フォーム */
@@ -208,7 +208,7 @@
       <h2>ご予約情報</h2>
       <!-- チェックイン日はカレンダーで選択 -->
       <input type="hidden" id="checkin-date" />
-      <!-- 泊数フィールドを追加（部屋カテゴリーの上に設置） -->
+      <!-- 泊数フィールドを部屋カテゴリーの上に追加 -->
       <div class="form-group">
         <label for="nights">泊数：</label>
         <input type="number" id="nights" min="1" placeholder="泊数を入力" required/>
@@ -310,7 +310,7 @@
       onSnapshot
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // Firebase設定（各自置き換えてください）
+    // Firebase 設定（各自置き換えてください）
     const firebaseConfig = {
       apiKey: "AIzaSyCnRbmcPezD4Osisss6XebmU15ukBqttQw",
       authDomain: "slack-bot-firebase-7991a.firebaseapp.com",
@@ -334,15 +334,14 @@
     const calendarEl = document.getElementById("calendar");
     const monthLabel = document.getElementById("current-month");
 
-    // roomsコレクションからデータを取得
     const roomsCol = collection(db, "rooms");
     onSnapshot(roomsCol, (snapshot) => {
-      // 毎回対象年月分のみ集計
+      // 対象年月分のみ集計するために calendarData を初期化
       calendarData = {};
       snapshot.forEach((docSnap) => {
         const d = docSnap.data();
         if (!d.date || typeof d.available !== "number") return;
-        // d.dateは"YYYY-MM-DD"として保存されている前提
+        // d.date は "YYYY-MM-DD" として保存されている前提
         const docDate = new Date(d.date);
         if (docDate.getFullYear() === currentYear && docDate.getMonth() === currentMonth) {
           if (!calendarData[d.date]) {
@@ -382,7 +381,7 @@
         calendarEl.appendChild(emptyCell);
       }
 
-      for (let day=1; day<=daysInMonth; day++){
+      for (let day = 1; day<=daysInMonth; day++){
         const dateKey = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
@@ -407,12 +406,10 @@
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
-
         // チェックイン日として選択されている場合はハイライト
-        if (day === new Date(checkInDate).getDate() && checkInDate) {
+        if (checkInDate && new Date(checkInDate).getDate() === day) {
           dayCell.classList.add("selected");
         }
-
         calendarEl.appendChild(dayCell);
       }
     }
@@ -430,6 +427,8 @@
       document.getElementById("current-month").textContent = `${currentYear}年${currentMonth+1}月`;
       renderCalendar(currentYear, currentMonth);
     });
+    document.getElementById("current-month").textContent = `${currentYear}年${currentMonth+1}月`;
+    renderCalendar(currentYear, currentMonth);
 
     /*===========================================
      * 予約確認画面＆予約確定処理
@@ -448,7 +447,6 @@
 
     goConfirmBtn.addEventListener("click", () => {
       const cIn = document.getElementById("checkin-date").value;
-      // チェックアウトは now では入力せず、泊数から自動計算するため hidden にしない
       const room = document.getElementById("room-category").value;
       const roomCount = document.getElementById("room-count").value;
       const nights = document.getElementById("nights").value;
@@ -462,15 +460,14 @@
         return;
       }
 
-      // チェックアウト日は、チェックイン日 + 泊数 を計算
+      // チェックアウト日を、チェックイン日 + 泊数で計算
       const checkInDateObj = new Date(cIn);
       const nightsNum = Number(nights);
       const checkOutDateObj = new Date(checkInDateObj);
       checkOutDateObj.setDate(checkInDateObj.getDate() + nightsNum);
-      // フォーマット YYYY-MM-DD
       const yyyy = checkOutDateObj.getFullYear();
-      const mm = String(checkOutDateObj.getMonth()+1).padStart(2,"0");
-      const dd = String(checkOutDateObj.getDate()).padStart(2,"0");
+      const mm = String(checkOutDateObj.getMonth() + 1).padStart(2, "0");
+      const dd = String(checkOutDateObj.getDate()).padStart(2, "0");
       const computedCheckout = `${yyyy}-${mm}-${dd}`;
 
       confirmCheckin.textContent = cIn;
@@ -496,24 +493,24 @@
     confirmSubmit.addEventListener("click", async () => {
       try {
         const cIn = document.getElementById("checkin-date").value;
+        const nights = Number(document.getElementById("nights").value);
         const room = document.getElementById("room-category").value;
         const roomCount = Number(document.getElementById("room-count").value);
-        const nights = Number(document.getElementById("nights").value);
         const name = document.getElementById("name").value;
         const phone = document.getElementById("phone").value;
         const email = document.getElementById("email").value;
         const guests = Number(document.getElementById("guests").value);
 
-        // 計算したチェックアウト日
+        // チェックアウト日を計算
         const checkInDateObj = new Date(cIn);
         const checkOutDateObj = new Date(checkInDateObj);
         checkOutDateObj.setDate(checkInDateObj.getDate() + nights);
         const yyyy = checkOutDateObj.getFullYear();
-        const mm = String(checkOutDateObj.getMonth()+1).padStart(2,"0");
-        const dd = String(checkOutDateObj.getDate()).padStart(2,"0");
+        const mm = String(checkOutDateObj.getMonth() + 1).padStart(2, "0");
+        const dd = String(checkOutDateObj.getDate()).padStart(2, "0");
         const computedCheckout = `${yyyy}-${mm}-${dd}`;
 
-        // 1) 在庫更新と予約追加をトランザクションで実行
+        // 在庫更新と予約追加をトランザクションで実行
         const docId = `${cIn}_${room}`;  // 例: "2025-02-02_standard"
         const roomDocRef = doc(db, "rooms", docId);
         const reservationsCol = collection(db, "reservations");
@@ -545,13 +542,12 @@
           });
         });
 
-        // 2) customersへの upsert（メールをキーに）
+        // customersへの upsert（メールをキーに）
         await upsertCustomer(name, phone, email);
 
         alert("予約を確定しました。（在庫・顧客情報も自動更新）");
         confirmModal.style.display = "none";
         document.getElementById("reservation-form").reset();
-        // リセット後、カレンダーのチェックイン日をクリア
         checkInDate = null;
         updateSelectedDates();
 
