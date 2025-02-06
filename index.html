@@ -3,33 +3,55 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>部屋在庫管理カレンダー</title>
+  <title>施設管理画面</title>
   <style>
+    /* 全体背景 */
     body {
       font-family: Arial, sans-serif;
-      margin: 0; padding: 0;
-      background: #f7faff;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
     }
+
+    /* コンテナ共通 */
     .container {
-      width: 95%; max-width: 800px; margin: 20px auto;
-      background: white; padding: 20px; border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 95%;
+      max-width: 1200px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 40px;
       text-align: center;
     }
     h1 {
-      margin-bottom: 20px;
-    }
-    .month-header {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     button {
-      padding: 10px 20px; font-size: 14px; border: none;
-      border-radius: 5px; background-color: #007bff;
-      color: white; cursor: pointer; transition: background-color 0.3s;
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+      background: #007bff;
+      color: #fff;
+      transition: background-color 0.3s;
     }
     button:hover {
-      background-color: #0056b3;
+      background: #0056b3;
+    }
+    .btn-danger {
+      background: #dc3545;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    /* --- 部屋在庫管理カレンダー用 --- */
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
     select {
       padding: 6px 10px; font-size: 14px;
@@ -62,13 +84,13 @@
       background-color: #f9f9f9;
       position: relative;
     }
-    .day-cell.available {
-      background-color: #e8fbe8;
-      color: #28a745;
-    }
     .day-cell.full {
       background-color: #ffeaea;
       color: #d9534f;
+    }
+    .day-cell.available {
+      background-color: #e8fbe8;
+      color: #28a745;
     }
     .day-cell.no-data {
       background-color: #f9f9f9;
@@ -80,7 +102,7 @@
       margin-top: 5px;
     }
 
-    /* モーダル (在庫編集用) */
+    /* モーダル(在庫編集) */
     #inventory-modal {
       display: none;
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -92,9 +114,10 @@
       width: 80%; max-width: 400px;
       border-radius: 8px;
       padding: 20px; margin: 0 auto;
+      text-align: left;
     }
     .form-group {
-      margin-bottom: 15px; text-align: left;
+      margin-bottom: 15px; 
     }
     .form-group label {
       display: block; font-weight: bold; margin-bottom: 5px;
@@ -106,14 +129,47 @@
     .modal-buttons {
       text-align: center; margin-top: 20px;
     }
-    .btn-danger {
-      background-color: #dc3545;
+
+    /* ---- 予約管理 ---- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 20px;
     }
-    .btn-danger:hover {
-      background-color: #c82333;
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    .form-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+    .form-inline input,
+    .form-inline select,
+    .form-inline button {
+      padding: 6px;
+      font-size: 14px;
     }
 
-    /* スマホレイアウト */
+    /* 予約詳細編集フォーム（ポップアップ的に使用） */
+    #reservation-detail {
+      display: none;
+      width: 95%;
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* ---- スマホレイアウト ---- */
     @media (max-width: 600px) {
       #calendar {
         gap: 5px;
@@ -129,10 +185,10 @@
   </style>
 </head>
 <body>
+
+  <!-- ▼ 部屋在庫管理カレンダー -->
   <div class="container">
     <h1>部屋在庫管理カレンダー</h1>
-
-    <!-- カテゴリー選択 + 月切り替え -->
     <div class="month-header">
       <button id="prev-month">前の月</button>
       <span id="current-month">2025年2月</span>
@@ -145,12 +201,10 @@
         <option value="suite">Suite</option>
       </select>
     </div>
-
-    <!-- カレンダー -->
     <div id="calendar"></div>
   </div>
 
-  <!-- モーダル (在庫編集) -->
+  <!-- 在庫編集モーダル -->
   <div id="inventory-modal">
     <div id="inventory-box">
       <h2>在庫編集</h2>
@@ -170,18 +224,96 @@
         <label>料金</label>
         <input type="number" id="inv-price" min="0" />
       </div>
-
       <div class="modal-buttons">
         <button id="save-inventory-btn">保存</button>
         <button id="delete-inventory-btn" class="btn-danger">削除</button>
         <button id="close-modal-btn">閉じる</button>
       </div>
-      <!-- docId hidden -->
       <input type="hidden" id="inv-docid" />
     </div>
   </div>
 
-  <!-- Firebase -->
+  <!-- ▼ 予約管理 -->
+  <div class="container" id="reservations-container">
+    <h1>予約管理</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>チェックイン</th>
+          <th>チェックアウト</th>
+          <th>部屋カテゴリー</th>
+          <th>氏名</th>
+          <th>電話</th>
+          <th>Email</th>
+          <th>人数</th>
+          <th>ステータス</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="reservations-list"></tbody>
+    </table>
+  </div>
+
+  <!-- 予約詳細編集フォーム（ポップアップ） -->
+  <div id="reservation-detail">
+    <h2>予約詳細</h2>
+    <div class="form-inline">
+      <label>チェックイン: <input type="date" id="res-checkin" /></label>
+      <label>チェックアウト: <input type="date" id="res-checkout" /></label>
+      <label>部屋タイプ: 
+        <select id="res-room-category">
+          <option value="standard">standard</option>
+          <option value="deluxe">deluxe</option>
+          <option value="suite">suite</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-inline">
+      <label>氏名: <input type="text" id="res-name" /></label>
+      <label>電話: <input type="text" id="res-phone" /></label>
+      <label>Email: <input type="email" id="res-email" /></label>
+      <label>人数: <input type="number" id="res-guests" min="1" /></label>
+    </div>
+    <div class="form-inline">
+      <label>ステータス: 
+        <select id="res-status">
+          <option value="confirmed">confirmed</option>
+          <option value="canceled">canceled</option>
+          <option value="pending">pending</option>
+        </select>
+      </label>
+      <button id="update-reservation-btn">更新</button>
+      <button id="close-reservation-detail" class="btn-danger">閉じる</button>
+    </div>
+    <!-- IDを保持する隠しフィールド -->
+    <input type="hidden" id="res-doc-id" />
+  </div>
+
+  <!-- ▼ 顧客管理 -->
+  <div class="container" id="customers-container">
+    <h1>顧客管理</h1>
+    <!-- 顧客新規追加フォーム -->
+    <div class="form-inline">
+      <input type="text" id="new-cust-name" placeholder="氏名" />
+      <input type="text" id="new-cust-phone" placeholder="電話番号" />
+      <input type="email" id="new-cust-email" placeholder="メールアドレス" />
+      <button id="add-customer-btn">新規追加</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>氏名</th>
+          <th>電話</th>
+          <th>Email</th>
+          <th>利用回数</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="customers-list"></tbody>
+    </table>
+  </div>
+
+  <!-- Firebase & Firestore スクリプト -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import {
@@ -189,13 +321,20 @@
       doc,
       collection,
       setDoc,
-      getDoc,
       updateDoc,
       deleteDoc,
-      onSnapshot
+      addDoc,
+      getDoc,
+      runTransaction,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // あなたのFirebase設定
+    /* ---------------------------
+       1) Firebase 初期化
+    --------------------------- */
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -207,25 +346,51 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let currentMonth = 1; // 0～11
+    /* =====================================================================
+       部屋在庫管理カレンダー (rooms)
+    ===================================================================== */
+    let currentMonth = 1; // 0=1月,1=2月..., 
     let currentYear = 2025;
     const calendarEl = document.getElementById("calendar");
     const monthLabel = document.getElementById("current-month");
     const categorySelect = document.getElementById("room-category-select");
 
-    // カレンダーデータを { dateKey: { available, price } } の形で保持
-    let calendarData = {};
+    let calendarData = {}; // { dateKey: { available, price } }
 
-    /**
-     * カレンダーを描画
-     */
+    async function loadCalendarData(year, month, category) {
+      // カレンダーデータ初期化
+      calendarData = {};
+
+      // rooms全体をリアルタイム取得してフィルタする例
+      // 既に onSnapshot が呼ばれていると多重になるのを避けるため、一度リスナーを使い回すなども考慮
+      // 簡易的に、ここで onSnapshot() を都度呼び出し
+      // => リスナーが重複すると複数回描画される恐れがあるので、実運用時は注意
+      const roomsCol = collection(db, "rooms");
+      onSnapshot(roomsCol, (snapshot) => {
+        calendarData = {};
+        snapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          if (!d.date || !d.roomCategory) return;
+          const docDate = new Date(d.date);
+          if (
+            d.roomCategory === category &&
+            docDate.getFullYear() === year &&
+            docDate.getMonth() === month
+          ) {
+            calendarData[d.date] = {
+              available: d.available ?? 0,
+              price: d.price ?? null
+            };
+          }
+        });
+        renderCalendar(year, month, category);
+      });
+    }
+
     function renderCalendar(year, month, category) {
-      // リセット
       calendarEl.innerHTML = "";
-      // タイトル
       monthLabel.textContent = `${year}年${month + 1}月`;
 
-      // 曜日ヘッダ
       const daysInWeek = ["日", "月", "火", "水", "木", "金", "土"];
       daysInWeek.forEach(day => {
         const headerCell = document.createElement("div");
@@ -234,13 +399,12 @@
         calendarEl.appendChild(headerCell);
       });
 
-      // 月初/月末
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      // 前の月の空セル
+      // 空白セル
       for (let i = 0; i < startDay; i++) {
         const emptyCell = document.createElement("div");
         emptyCell.classList.add("day-cell", "no-data");
@@ -252,7 +416,6 @@
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
-        // calendarData[dateKey] があれば表示
         let available = 0;
         let price = null;
         if (calendarData[dateKey]) {
@@ -260,20 +423,19 @@
           price = calendarData[dateKey].price;
         }
 
-        // 在庫があるなら
-        if (available > 0) {
+        if (price !== null && available === 0) {
+          // 満室
+          dayCell.classList.add("full");
+          dayCell.innerHTML = `
+            <div>${day}</div>
+            <div>満室</div>
+          `;
+        } else if (available > 0) {
           dayCell.classList.add("available");
           dayCell.innerHTML = `
             <div>${day}</div>
             <div>空室: ${available}</div>
             <div class="price">￥${price ?? "???"}</div>
-          `;
-        } else if (available === 0 && price !== null) {
-          // 満室扱い
-          dayCell.classList.add("full");
-          dayCell.innerHTML = `
-            <div>${day}</div>
-            <div>満室</div>
           `;
         } else {
           // データなし
@@ -281,125 +443,15 @@
           dayCell.textContent = day;
         }
 
-        // 日付クリック
         dayCell.addEventListener("click", () => {
-          if (dayCell.classList.contains("no-data")) {
-            // 日付が存在しない or データ未登録 → 0部屋として扱うか新規作成するか
-            openInventoryModal(dateKey, category, 0, 0);
-          } else {
-            // 既存データがある or 0部屋
-            openInventoryModal(dateKey, category, available, price);
-          }
+          openInventoryModal(dateKey, category, available, price);
         });
 
         calendarEl.appendChild(dayCell);
       }
     }
 
-    /**
-     * Firestore から (year-month, category) のデータを読み込み
-     *  => calendarData に格納 => renderCalendar()
-     */
-    async function loadCalendarData(year, month, category) {
-      // カレンダーデータ初期化
-      calendarData = {};
-
-      // 月初～月末の日付を取得
-      const startDate = new Date(year, month, 1);
-      const endDate = new Date(year, month + 1, 0);
-
-      // Firestore 上のroomsドキュメントIDは "YYYY-MM-DD_category"
-      // ここではサンプルとして「リアルタイム監視」は行わず、日付を1日ずつ doc() で取得するか、
-      // あるいは roomsコレクション全体を onSnapshot() して日付・category で絞り込む。
-      // デモとしては、roomsコレクション全体を取って絞る方法を示します:
-
-      //onSnapshot(collection(db, "rooms"), (snapshot) => { ... })
-      // みたいに使う。
-      // ここでは簡易的に "全ドキュメント" を取得し、対象年月＆カテゴリーだけ抽出します。
-      const roomsCol = collection(db, "rooms");
-      onSnapshot(roomsCol, (snapshot) => {
-        // 取得が走るたび calendarData をクリア
-        calendarData = {};
-
-        snapshot.forEach((docSnap) => {
-          const d = docSnap.data();
-          if (!d.date || !d.roomCategory) return;
-          const docDate = new Date(d.date); // "2025-02-10" => new Date(2025,1,10)
-          // categoryが一致、同じ年月かどうかを判定
-          if (
-            d.roomCategory === category &&
-            docDate.getFullYear() === year &&
-            docDate.getMonth() === month
-          ) {
-            // calendarData にセット
-            calendarData[d.date] = {
-              available: d.available ?? 0,
-              price: d.price ?? null
-            };
-          }
-        });
-
-        // 取得完了後にカレンダーを再描画
-        renderCalendar(year, month, category);
-      });
-    }
-
-    /**
-     * モーダルを開いて在庫編集を行う
-     */
-    function openInventoryModal(dateKey, category, available, price) {
-      const docId = `${dateKey}_${category}`;
-      document.getElementById("inv-date").value = dateKey;
-      document.getElementById("inv-category").value = category;
-      document.getElementById("inv-available").value = available;
-      document.getElementById("inv-price").value = price ?? 0;
-      document.getElementById("inv-docid").value = docId;
-
-      document.getElementById("inventory-modal").style.display = "flex";
-    }
-
-    // モーダルを閉じる
-    document.getElementById("close-modal-btn").addEventListener("click", () => {
-      document.getElementById("inventory-modal").style.display = "none";
-    });
-
-    // 保存ボタン => setDoc or updateDoc
-    document.getElementById("save-inventory-btn").addEventListener("click", async () => {
-      const dateVal = document.getElementById("inv-date").value;
-      const categoryVal = document.getElementById("inv-category").value;
-      const docId = document.getElementById("inv-docid").value;
-      const availVal = Number(document.getElementById("inv-available").value);
-      const priceVal = Number(document.getElementById("inv-price").value);
-
-      if (!docId) return alert("docIdがありません");
-      const roomDoc = doc(db, "rooms", docId);
-
-      // Firestoreに保存 (あれば更新、なければ作成)
-      await setDoc(roomDoc, {
-        date: dateVal,
-        roomCategory: categoryVal,
-        available: availVal,
-        price: priceVal
-      });
-      alert("在庫を保存しました");
-      document.getElementById("inventory-modal").style.display = "none";
-    });
-
-    // 削除ボタン => deleteDoc
-    document.getElementById("delete-inventory-btn").addEventListener("click", async () => {
-      const docId = document.getElementById("inv-docid").value;
-      if (!docId) return alert("docIdがありません");
-
-      const confirmDel = confirm("本当に削除しますか？");
-      if (!confirmDel) return;
-
-      const roomDoc = doc(db, "rooms", docId);
-      await deleteDoc(roomDoc);
-      alert("在庫を削除しました");
-      document.getElementById("inventory-modal").style.display = "none";
-    });
-
-    // 月切り替え
+    // 前の月 / 次の月
     document.getElementById("prev-month").addEventListener("click", () => {
       currentMonth--;
       if (currentMonth < 0) {
@@ -417,13 +469,273 @@
       loadCalendarData(currentYear, currentMonth, categorySelect.value);
     });
 
-    // カテゴリー選択
     categorySelect.addEventListener("change", () => {
       loadCalendarData(currentYear, currentMonth, categorySelect.value);
     });
 
-    // 初期表示
+    // モーダル(在庫編集)
+    const inventoryModal = document.getElementById("inventory-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const saveInventoryBtn = document.getElementById("save-inventory-btn");
+    const deleteInventoryBtn = document.getElementById("delete-inventory-btn");
+
+    closeModalBtn.addEventListener("click", () => {
+      inventoryModal.style.display = "none";
+    });
+
+    function openInventoryModal(dateKey, category, available, price) {
+      const docId = `${dateKey}_${category}`;
+      document.getElementById("inv-date").value = dateKey;
+      document.getElementById("inv-category").value = category;
+      document.getElementById("inv-available").value = available;
+      document.getElementById("inv-price").value = price ?? 0;
+      document.getElementById("inv-docid").value = docId;
+
+      inventoryModal.style.display = "flex";
+    }
+
+    saveInventoryBtn.addEventListener("click", async () => {
+      const dateVal = document.getElementById("inv-date").value;
+      const categoryVal = document.getElementById("inv-category").value;
+      const docId = document.getElementById("inv-docid").value;
+      const availVal = Number(document.getElementById("inv-available").value);
+      const priceVal = Number(document.getElementById("inv-price").value);
+
+      if (!docId) {
+        alert("docIdがありません");
+        return;
+      }
+      await setDoc(doc(db, "rooms", docId), {
+        date: dateVal,
+        roomCategory: categoryVal,
+        available: availVal,
+        price: priceVal
+      });
+      alert("在庫を保存しました");
+      inventoryModal.style.display = "none";
+    });
+
+    deleteInventoryBtn.addEventListener("click", async () => {
+      const docId = document.getElementById("inv-docid").value;
+      if (!docId) return alert("docIdがありません");
+      const confirmDel = confirm("本当に削除しますか？");
+      if (!confirmDel) return;
+
+      await deleteDoc(doc(db, "rooms", docId));
+      alert("在庫を削除しました");
+      inventoryModal.style.display = "none";
+    });
+
+    // 初期ロード
     loadCalendarData(currentYear, currentMonth, categorySelect.value);
+
+
+    /* =====================================================================
+       予約管理 (reservations)
+    ===================================================================== */
+    const reservationsRef = collection(db, "reservations");
+    const reservationsListEl = document.getElementById("reservations-list");
+    onSnapshot(query(reservationsRef, orderBy("createdAt","desc")), (snapshot) => {
+      reservationsListEl.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const r = docSnap.data();
+        const docId = docSnap.id;
+        const status = r.status || "confirmed";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.checkInDate || ""}</td>
+          <td>${r.checkOutDate || ""}</td>
+          <td>${r.roomCategory || ""}</td>
+          <td>${r.name || ""}</td>
+          <td>${r.phone || ""}</td>
+          <td>${r.email || ""}</td>
+          <td>${r.guests || ""}</td>
+          <td>${status}</td>
+          <td>
+            <button class="edit-res-btn" data-id="${docId}">編集</button>
+            <button class="cancel-res-btn btn-danger" data-id="${docId}">キャンセル</button>
+          </td>
+        `;
+        reservationsListEl.appendChild(tr);
+      });
+
+      // 編集ボタン
+      document.querySelectorAll(".edit-res-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const docId = e.currentTarget.getAttribute("data-id");
+          openReservationDetail(docId);
+        });
+      });
+
+      // キャンセル
+      document.querySelectorAll(".cancel-res-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const docId = e.currentTarget.getAttribute("data-id");
+          const confirmCancel = confirm("本当にキャンセルしますか？");
+          if (!confirmCancel) return;
+
+          await cancelReservationWithInventoryReturn(docId);
+        });
+      });
+    });
+
+    // 予約詳細フォーム
+    const reservationDetail = document.getElementById("reservation-detail");
+    const resDocIdEl = document.getElementById("res-doc-id");
+    const resCheckinEl = document.getElementById("res-checkin");
+    const resCheckoutEl = document.getElementById("res-checkout");
+    const resCategoryEl = document.getElementById("res-room-category");
+    const resNameEl = document.getElementById("res-name");
+    const resPhoneEl = document.getElementById("res-phone");
+    const resEmailEl = document.getElementById("res-email");
+    const resGuestsEl = document.getElementById("res-guests");
+    const resStatusEl = document.getElementById("res-status");
+
+    async function openReservationDetail(docId) {
+      const snap = await getDoc(doc(db, "reservations", docId));
+      if (!snap.exists()) {
+        alert("予約が存在しません: " + docId);
+        return;
+      }
+      const r = snap.data();
+      resDocIdEl.value = docId;
+      resCheckinEl.value = r.checkInDate || "";
+      resCheckoutEl.value = r.checkOutDate || "";
+      resCategoryEl.value = r.roomCategory || "standard";
+      resNameEl.value = r.name || "";
+      resPhoneEl.value = r.phone || "";
+      resEmailEl.value = r.email || "";
+      resGuestsEl.value = r.guests || 1;
+      resStatusEl.value = r.status || "confirmed";
+
+      reservationDetail.style.display = "block";
+    }
+
+    document.getElementById("update-reservation-btn").addEventListener("click", async () => {
+      const docId = resDocIdEl.value;
+      if (!docId) {
+        alert("docIdがありません");
+        return;
+      }
+      const payload = {
+        checkInDate: resCheckinEl.value,
+        checkOutDate: resCheckoutEl.value,
+        roomCategory: resCategoryEl.value,
+        name: resNameEl.value,
+        phone: resPhoneEl.value,
+        email: resEmailEl.value,
+        guests: Number(resGuestsEl.value),
+        status: resStatusEl.value
+      };
+      await updateDoc(doc(db, "reservations", docId), payload);
+      alert("予約を更新しました");
+    });
+
+    document.getElementById("close-reservation-detail").addEventListener("click", () => {
+      reservationDetail.style.display = "none";
+    });
+
+    // キャンセル時に在庫を戻す (単日のみの例)
+    async function cancelReservationWithInventoryReturn(resId) {
+      const resDocRef = doc(db, "reservations", resId);
+      await runTransaction(db, async (transaction) => {
+        const resSnap = await transaction.get(resDocRef);
+        if (!resSnap.exists()) throw new Error("予約が存在しません");
+        const r = resSnap.data();
+        if (r.status === "canceled") {
+          throw new Error("既にキャンセル済みです");
+        }
+
+        // docId = "YYYY-MM-DD_category"
+        const docId = `${r.checkInDate}_${r.roomCategory}`;
+        const roomRef = doc(db, "rooms", docId);
+        const roomSnap = await transaction.get(roomRef);
+        if (roomSnap.exists()) {
+          const roomData = roomSnap.data();
+          const newAvail = (roomData.available || 0) + 1;
+          transaction.update(roomRef, { available: newAvail });
+        }
+
+        transaction.update(resDocRef, { status: "canceled" });
+      });
+      alert("予約をキャンセルしました (在庫を1戻しました)");
+    }
+
+
+    /* =====================================================================
+       顧客管理 (customers)
+    ===================================================================== */
+    const customersRef = collection(db, "customers");
+    const customersListEl = document.getElementById("customers-list");
+
+    onSnapshot(customersRef, (snapshot) => {
+      customersListEl.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const c = docSnap.data();
+        const docId = docSnap.id;
+        const visitCount = c.visitCount ?? 0;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            <input type="text" value="${c.name || ""}" id="cust-name-${docId}" />
+          </td>
+          <td>
+            <input type="text" value="${c.phone || ""}" id="cust-phone-${docId}" />
+          </td>
+          <td>
+            <input type="email" value="${c.email || ""}" id="cust-email-${docId}" />
+          </td>
+          <td>
+            <input type="number" value="${visitCount}" id="cust-visit-${docId}" style="width:60px"/>
+          </td>
+          <td>
+            <button class="update-cust-btn" data-id="${docId}">更新</button>
+          </td>
+        `;
+        customersListEl.appendChild(tr);
+      });
+
+      // 顧客更新
+      document.querySelectorAll(".update-cust-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const docId = e.currentTarget.getAttribute("data-id");
+          const nameVal = document.getElementById(`cust-name-${docId}`).value;
+          const phoneVal = document.getElementById(`cust-phone-${docId}`).value;
+          const emailVal = document.getElementById(`cust-email-${docId}`).value;
+          const visitVal = Number(document.getElementById(`cust-visit-${docId}`).value);
+
+          await updateDoc(doc(db, "customers", docId), {
+            name: nameVal,
+            phone: phoneVal,
+            email: emailVal,
+            visitCount: visitVal
+          });
+          alert("顧客情報を更新しました: " + docId);
+        });
+      });
+    });
+
+    // 新規顧客追加
+    document.getElementById("add-customer-btn").addEventListener("click", async () => {
+      const nameVal = (document.getElementById("new-cust-name").value || "").trim();
+      const phoneVal = (document.getElementById("new-cust-phone").value || "").trim();
+      const emailVal = (document.getElementById("new-cust-email").value || "").trim();
+
+      if (!nameVal) {
+        alert("氏名は必須です");
+        return;
+      }
+      await addDoc(customersRef, {
+        name: nameVal,
+        phone: phoneVal,
+        email: emailVal,
+        visitCount: 0,
+        createdAt: serverTimestamp()
+      });
+      alert("新規顧客を追加しました");
+    });
   </script>
 </body>
 </html>
