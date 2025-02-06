@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>空室カレンダー（自動在庫減＆顧客upsert）</title>
+  <title>空室カレンダー（最新在庫反映）</title>
   <style>
     /* 全体のデザイン */
     body {
@@ -16,7 +16,6 @@
       align-items: flex-start;
       min-height: 100vh;
     }
-
     /* カレンダー＆フォームをまとめるコンテナ */
     #calendar-container {
       background: white;
@@ -28,14 +27,11 @@
       text-align: center;
       margin-top: 20px;
     }
-
-    /* タイトル */
     h1 {
       font-size: 24px;
       color: #333;
       margin-bottom: 20px;
     }
-
     /* 月切り替えボタン */
     .month-header {
       display: flex;
@@ -56,7 +52,6 @@
     button:hover {
       background-color: #0056b3;
     }
-
     /* カレンダー */
     #calendar {
       display: grid;
@@ -80,8 +75,8 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      cursor: default;
       background-color: #f9f9f9;
+      cursor: default;
       position: relative;
     }
     .day-cell.full {
@@ -94,8 +89,8 @@
       cursor: pointer;
     }
     .day-cell.no-data {
-      color: #ccc;
       background-color: #f9f9f9;
+      color: #ccc;
     }
     .price {
       font-size: 12px;
@@ -105,7 +100,6 @@
     .day-cell.selected-range {
       background-color: #ffd966 !important;
     }
-
     /* 予約フォーム */
     form#reservation-form {
       text-align: left;
@@ -138,8 +132,6 @@
       border: 1px solid #ccc;
       border-radius: 5px;
     }
-
-    /* ボタン */
     .btn {
       display: block;
       margin: 20px auto 0;
@@ -155,7 +147,6 @@
     .btn:hover {
       background-color: #218838;
     }
-
     /* 確認画面（モーダル） */
     #confirm-modal {
       display: none;
@@ -181,8 +172,7 @@
       font-weight: bold;
       margin-right: 5px;
     }
-
-    /* スマホなど画面が狭い場合 */
+    /* スマホ */
     @media (max-width: 600px) {
       #calendar {
         gap: 5px;
@@ -214,10 +204,9 @@
     <!-- 予約フォーム -->
     <form id="reservation-form">
       <h2>ご予約情報</h2>
-      <!-- 選択したチェックイン日・チェックアウト日をセットするための隠しフィールド -->
+      <!-- チェックイン・チェックアウト日を保持 -->
       <input type="hidden" id="checkin-date" />
       <input type="hidden" id="checkout-date" />
-
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
         <select id="room-category" required>
@@ -227,13 +216,11 @@
           <option value="suite">スイート</option>
         </select>
       </div>
-
       <!-- 部屋数 -->
       <div class="form-group">
         <label for="room-count">部屋数：</label>
         <input type="number" id="room-count" min="1" placeholder="部屋数" required/>
       </div>
-
       <div class="form-group">
         <label for="name">氏名：</label>
         <input type="text" id="name" placeholder="例）山田 太郎" required/>
@@ -250,7 +237,6 @@
         <label for="guests">宿泊人数：</label>
         <input type="number" id="guests" min="1" placeholder="人数を入力" required/>
       </div>
-
       <!-- 確認画面へ進むボタン -->
       <button type="button" class="btn" id="go-confirm">確認画面へ進む</button>
     </form>
@@ -292,7 +278,6 @@
         <span class="confirm-label">宿泊人数：</span>
         <span id="confirm-guests"></span>
       </div>
-
       <!-- 予約確定ボタンとキャンセルボタン -->
       <button id="confirm-submit" class="btn" style="background-color:#007bff;">予約を確定する</button>
       <button id="confirm-cancel" class="btn" style="background-color:#dc3545;">修正する</button>
@@ -311,10 +296,11 @@
       query,
       where,
       getDocs,
-      serverTimestamp
+      serverTimestamp,
+      onSnapshot
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // ▼ あなたのFirebaseプロジェクト設定を貼り付け
+    // Firebase プロジェクト設定（各自置き換えてください）
     const firebaseConfig = {
       apiKey: "AIzaSyCnRbmcPezD4Osisss6XebmU15ukBqttQw",
       authDomain: "slack-bot-firebase-7991a.firebaseapp.com",
@@ -328,67 +314,86 @@
     const db = getFirestore(app);
 
     /*===========================================
-     * 1) カレンダー表示 (従来のローカルavailabilityData使用)
+     * お客様画面のカレンダー表示：Firestoreから最新在庫を取得して集計
+     * ここでは、rooms コレクションの全ドキュメントを onSnapshot で取得し、
+     * 対象の年月の各日について、全カテゴリーの available 合計と最低料金 (minPrice) を集計します。
      ===========================================*/
-    const availabilityData = {
-      "2025-02-01": { available: 0, price: null },
-      "2025-02-02": { available: 3, price: 5000 },
-      "2025-02-03": { available: 5, price: 4500 },
-      "2025-02-08": { available: 0, price: null },
-      "2025-02-11": { available: 2, price: 5600 },
-      "2025-03-01": { available: 0, price: null },
-      "2025-03-05": { available: 2, price: 6000 },
-    };
-
-    let currentMonth = 1; // 2月
     let currentYear = 2025;
-    let checkInDate = null;
-    let checkOutDate = null;
+    let currentMonth = 1; // 0～11：ここでは2月
+    // calendarData: { "YYYY-MM-DD": { totalAvailable, minPrice } }
+    let calendarData = {};
+
+    const calendarEl = document.getElementById("calendar");
+    const monthLabel = document.getElementById("current-month");
+
+    // Firestoreのroomsコレクションからデータを取得して集計する
+    // ※ 全ドキュメント取得→JavaScript側で対象年月をフィルタしています。
+    // 実運用ではクエリで日付範囲を絞るとよいでしょう。
+    const roomsCol = collection(db, "rooms");
+    onSnapshot(roomsCol, (snapshot) => {
+      // 対象年月ごとに集計する前に calendarData を初期化
+      calendarData = {};
+
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (!d.date || typeof d.available !== "number") return;
+        // d.date は "YYYY-MM-DD" として保存されている前提
+        const docDate = new Date(d.date);
+        if (docDate.getFullYear() === currentYear && docDate.getMonth() === currentMonth) {
+          // すでに存在していれば合算、なければ初期化
+          if (!calendarData[d.date]) {
+            calendarData[d.date] = { totalAvailable: 0, minPrice: d.price };
+          }
+          calendarData[d.date].totalAvailable += d.available;
+          // 最低料金の更新
+          if (d.price != null) {
+            if (calendarData[d.date].minPrice == null || d.price < calendarData[d.date].minPrice) {
+              calendarData[d.date].minPrice = d.price;
+            }
+          }
+        }
+      });
+      renderCalendar(currentYear, currentMonth);
+    });
 
     function renderCalendar(year, month) {
-      const calendar = document.getElementById("calendar");
-      calendar.innerHTML = "";
+      calendarEl.innerHTML = "";
+      monthLabel.textContent = `${year}年${month+1}月`;
 
-      const daysInWeek = ["日", "月", "火", "水", "木", "金", "土"];
+      const daysInWeek = ["日","月","火","水","木","金","土"];
       daysInWeek.forEach(day => {
         const headerCell = document.createElement("div");
         headerCell.classList.add("day-header");
         headerCell.textContent = day;
-        calendar.appendChild(headerCell);
+        calendarEl.appendChild(headerCell);
       });
 
       const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
+      const lastDay = new Date(year, month+1, 0);
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      // 月の最初の曜日まで空白セル
       for (let i = 0; i < startDay; i++) {
         const emptyCell = document.createElement("div");
-        emptyCell.classList.add("day-cell", "no-data");
-        calendar.appendChild(emptyCell);
+        emptyCell.classList.add("day-cell","no-data");
+        calendarEl.appendChild(emptyCell);
       }
 
       for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+        const dateKey = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
-        // ローカルの availabilityData から空室表示
-        if (availabilityData[dateKey]) {
-          const { available, price } = availabilityData[dateKey];
-          if (available > 0) {
+        const dayInfo = calendarData[dateKey];
+        if (dayInfo) {
+          if (dayInfo.totalAvailable > 0) {
             dayCell.classList.add("available");
             dayCell.innerHTML = `
               <div>${day}</div>
-              <div>空室: ${available}</div>
-              <div class="price">¥${price}</div>
+              <div>空室: ${dayInfo.totalAvailable}</div>
+              <div class="price">¥${dayInfo.minPrice ?? "???"}</div>
             `;
-            dayCell.addEventListener("click", () => {
-              selectDate(dateKey);
-            });
           } else {
-            // 満室
             dayCell.classList.add("full");
             dayCell.innerHTML = `
               <div>${day}</div>
@@ -396,81 +401,16 @@
             `;
           }
         } else {
-          // データなし
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
-
-        // チェックイン～チェックアウトの範囲をハイライト
-        if (isInSelectedRange(dateKey)) {
-          dayCell.classList.add("selected-range");
-        }
-
-        calendar.appendChild(dayCell);
+        // （必要に応じて、クリック時の処理などを追加可能）
+        calendarEl.appendChild(dayCell);
       }
     }
-
-    function selectDate(dateKey) {
-      if (checkInDate && checkOutDate) {
-        checkInDate = dateKey;
-        checkOutDate = null;
-      } else if (!checkInDate) {
-        checkInDate = dateKey;
-      } else if (!checkOutDate) {
-        if (dateKey < checkInDate) {
-          checkOutDate = checkInDate;
-          checkInDate = dateKey;
-        } else {
-          checkOutDate = dateKey;
-        }
-      }
-      updateSelectedDates();
-
-      if (checkInDate && checkOutDate) {
-        document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
-      }
-    }
-
-    function isInSelectedRange(dateKey) {
-      if (checkInDate && checkOutDate) {
-        return dateKey >= checkInDate && dateKey <= checkOutDate;
-      } else if (checkInDate && !checkOutDate) {
-        return dateKey === checkInDate;
-      }
-      return false;
-    }
-
-    function updateSelectedDates() {
-      document.getElementById("checkin-date").value = checkInDate || "";
-      document.getElementById("checkout-date").value = checkOutDate || "";
-      renderCalendar(currentYear, currentMonth);
-    }
-
-    document.getElementById("prev-month").addEventListener("click", () => {
-      currentMonth--;
-      if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-      }
-      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
-      renderCalendar(currentYear, currentMonth);
-    });
-    document.getElementById("next-month").addEventListener("click", () => {
-      currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
-      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
-      renderCalendar(currentYear, currentMonth);
-    });
-
-    document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
-    renderCalendar(currentYear, currentMonth);
-
 
     /*===========================================
-     * 2) 確認画面へ遷移
+     * 予約確認画面への遷移＆予約確定処理
      ===========================================*/
     const goConfirmBtn = document.getElementById("go-confirm");
     const confirmModal = document.getElementById("confirm-modal");
@@ -497,7 +437,6 @@
         alert("未入力の項目があります。");
         return;
       }
-
       confirmCheckin.textContent = cIn;
       confirmCheckout.textContent = cOut;
       confirmRoom.textContent = room;
@@ -506,12 +445,11 @@
       confirmPhone.textContent = phone;
       confirmEmail.textContent = email;
       confirmGuests.textContent = guests;
-
       confirmModal.style.display = "flex";
     });
 
     /*===========================================
-     * 3) 予約確定時の処理（roomsの在庫を減らす + customersにupsert + reservationsに追加）
+     * 予約確定時の処理（roomsの在庫を減らす + customersにupsert + reservationsに追加）
      ===========================================*/
     const confirmSubmit = document.getElementById("confirm-submit");
     const confirmCancel = document.getElementById("confirm-cancel");
@@ -522,7 +460,6 @@
 
     confirmSubmit.addEventListener("click", async () => {
       try {
-        // フォームの入力値を取得
         const cIn = document.getElementById("checkin-date").value;
         const cOut = document.getElementById("checkout-date").value;
         const room = document.getElementById("room-category").value;
@@ -532,13 +469,12 @@
         const email = document.getElementById("email").value;
         const guests = Number(document.getElementById("guests").value);
 
-        // 1) Firestoreでrooms在庫を減らし、2) reservationsに追加するトランザクション
-        const docId = `${cIn}_${room}`; // "YYYY-MM-DD_standard" など
+        // 1) 在庫更新と予約追加をトランザクションで実行
+        const docId = `${cIn}_${room}`;  // 例: "2025-02-02_standard"
         const roomDocRef = doc(db, "rooms", docId);
         const reservationsCol = collection(db, "reservations");
 
         await runTransaction(db, async (transaction) => {
-          // roomsドキュメントを取得
           const roomSnap = await transaction.get(roomDocRef);
           if (!roomSnap.exists()) {
             throw new Error(`在庫情報が存在しません: ${docId}`);
@@ -547,18 +483,14 @@
           if ((roomData.available ?? 0) < roomCount) {
             throw new Error("在庫が不足しています。");
           }
-
-          // 在庫を減らす
           transaction.update(roomDocRef, {
             available: (roomData.available ?? 0) - roomCount
           });
-
-          // reservationsに追加
           await addDoc(reservationsCol, {
             checkInDate: cIn,
             checkOutDate: cOut,
             roomCategory: room,
-            roomCount, // 部屋数
+            roomCount,
             name,
             phone,
             email,
@@ -568,17 +500,15 @@
           });
         });
 
-        // 3) customersへupsert（メールアドレスをキーとした例）
+        // 2) customers への upsert（メールをキーに）
         await upsertCustomer(name, phone, email);
 
-        alert("予約を確定しました。（在庫を自動で減らし、顧客情報も更新しました）");
+        alert("予約を確定しました。（在庫と顧客情報も自動更新）");
         confirmModal.style.display = "none";
-
-        // フォームリセット
         document.getElementById("reservation-form").reset();
         checkInDate = null;
         checkOutDate = null;
-        updateSelectedDates();
+        // 最新在庫情報は onSnapshot により自動で反映されます。
 
       } catch (err) {
         console.error("予約確定時エラー:", err);
@@ -587,21 +517,17 @@
     });
 
     /*===========================================
-     * 4) customersコレクションへの upsert
-     *   (メールアドレスで検索し、あればvisitCount+1、なければ新規作成)
+     * customers への upsert
+     * （メールをキーに検索し、あれば visitCount+1、なければ新規追加）
      ===========================================*/
     async function upsertCustomer(name, phone, email) {
-      // customersコレクションで email が一致するドキュメントを検索
       const customersCol = collection(db, "customers");
       const q = query(customersCol, where("email", "==", email));
       const snap = await getDocs(q);
-
       if (!snap.empty) {
-        // 既存顧客が見つかった → 1件目を更新 (複数ヒットの考慮は省略)
         const docRef = snap.docs[0].ref;
         const data = snap.docs[0].data();
         const newVisit = (data.visitCount ?? 0) + 1;
-
         await runTransaction(db, async (transaction) => {
           transaction.update(docRef, {
             name,
@@ -613,7 +539,6 @@
         });
         console.log("既存顧客を更新しました:", docRef.id);
       } else {
-        // 見つからない → 新規追加
         await addDoc(customersCol, {
           name,
           phone,
