@@ -54,7 +54,6 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-
     button:hover {
       background-color: #0056b3;
     }
@@ -83,7 +82,7 @@
       font-size: 14px;
       background-color: #f9f9f9;
       cursor: pointer; /* クリック可能に */
-      position: relative; /* ハイライトの重なり用 */
+      position: relative; /* ハイライトのために位置指定 */
     }
 
     .day-cell.full {
@@ -107,12 +106,6 @@
       margin-top: 5px;
     }
 
-    /* 選択範囲をハイライト表示するクラス */
-    .selected-range {
-      /* 選択した日付に重ねる透明カラー */
-      background-color: rgba(255, 217, 102, 0.6);
-    }
-
     /* 予約フォーム */
     form#reservation-form {
       text-align: left;
@@ -121,7 +114,6 @@
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-
     form#reservation-form h2 {
       margin-bottom: 20px;
       font-size: 20px;
@@ -132,14 +124,12 @@
     .form-group {
       margin-bottom: 15px;
     }
-
     .form-group label {
       display: block;
       margin-bottom: 5px;
       font-weight: bold;
       color: #333;
     }
-
     .form-group input,
     .form-group select {
       width: 100%;
@@ -165,6 +155,11 @@
     #submit-btn:hover {
       background-color: #218838;
     }
+
+    /* ▼▼ ここが重要！選択範囲をより強く上書きする ▼▼ */
+    .day-cell.selected-range {
+      background-color: #ffd966 !important; /* 不透明でしっかり上書き */
+    }
   </style>
 </head>
 <body>
@@ -180,10 +175,8 @@
     </div>
 
     <!-- 予約フォーム（同じコンテナ内に設置） -->
-    <!-- 実際に送信先を用意する場合は、actionにサーバのURLを指定してください -->
     <form id="reservation-form" method="POST" action="/reservation">
       <h2>ご予約情報</h2>
-
       <!-- 選択したチェックイン日・チェックアウト日をセットするための隠しフィールド -->
       <input type="hidden" id="checkin-date" name="checkin-date" />
       <input type="hidden" id="checkout-date" name="checkout-date" />
@@ -230,16 +223,15 @@
       "2025-03-05": { available: 2, price: 6000 },
     };
 
-    // 表示する月（2月）と年を初期設定
-    let currentMonth = 1; // 0=1月, 1=2月,...
+    let currentMonth = 1; // 2月
     let currentYear = 2025;
 
-    // 選択したチェックイン・チェックアウトを管理する変数
+    // チェックイン・チェックアウト
     let checkInDate = null;
     let checkOutDate = null;
 
     /**
-     * カレンダーを描画
+     * カレンダー描画
      */
     function renderCalendar(year, month) {
       const calendar = document.getElementById("calendar");
@@ -258,20 +250,18 @@
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      // 月の最初の曜日まで空白セルを追加
+      // 月の最初の曜日まで空白セル
       for (let i = 0; i < startDay; i++) {
         const emptyCell = document.createElement("div");
         emptyCell.classList.add("day-cell", "no-data");
         calendar.appendChild(emptyCell);
       }
 
-      // 各日の日付セルを作成
       for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const dateKey = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
-        // availabilityData による空室情報を表示
         if (availabilityData[dateKey]) {
           const { available, price } = availabilityData[dateKey];
           if (available > 0) {
@@ -289,20 +279,19 @@
             `;
           }
         } else {
-          // 空室情報が無い日
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
 
-        // 日付セルをクリックするとチェックイン・チェックアウトを設定
+        // 日付クリック
         dayCell.addEventListener("click", () => {
-          // クリックした日付を選択するロジック
+          // 日付を選択
           selectDate(dateKey);
-          // フォームにスクロール
+          // フォームへスクロール（動きは残す）
           document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
         });
 
-        // ハイライトすべき期間ならばクラスを付与
+        // ハイライト判定
         if (isInSelectedRange(dateKey)) {
           dayCell.classList.add("selected-range");
         }
@@ -313,25 +302,21 @@
 
     /**
      * 日付選択ロジック
-     * - まだチェックインが未選択: → クリックした日をチェックインに
-     * - チェックインのみ選択済み: → クリックした日をチェックアウトに
-     * - 両方選択済み: → 新しくチェックインを選び直す（チェックアウトはクリア）
      */
     function selectDate(dateKey) {
-      // もし両方選択済みなら、一旦リセットして新たにチェックインをセット
+      // 両方選択済みなら、一度リセットして新しいチェックインにする
       if (checkInDate && checkOutDate) {
         checkInDate = dateKey;
         checkOutDate = null;
       }
-      // まだチェックインがない場合
+      // チェックインが未選択なら
       else if (!checkInDate) {
         checkInDate = dateKey;
       }
-      // チェックアウトがまだ無い場合
+      // チェックインのみ選択済みなら
       else if (!checkOutDate) {
-        // チェックインとチェックアウトを比較し、順序が逆なら入れ替え
+        // チェックアウト日がチェックインより前の場合は入れ替え
         if (dateKey < checkInDate) {
-          // dateKeyのほうが早い日付なので、入れ替える
           checkOutDate = checkInDate;
           checkInDate = dateKey;
         } else {
@@ -339,38 +324,35 @@
         }
       }
 
-      // 選択状況を再描画
-      updateSelectedDates();
+      updateSelectedDates(); // カレンダー再描画＆hiddenフィールド更新
     }
 
     /**
-     * 指定したdateKeyが、チェックイン日～チェックアウト日の範囲内か判定
+     * 日付が選択範囲内(チェックイン～チェックアウト)にあるかどうか
      */
     function isInSelectedRange(dateKey) {
       if (checkInDate && checkOutDate) {
-        return (dateKey >= checkInDate && dateKey <= checkOutDate);
-      }
-      if (checkInDate && !checkOutDate) {
-        // チェックアウト未選択の場合、チェックイン日だけハイライトしてもよい
-        return (dateKey === checkInDate);
+        return dateKey >= checkInDate && dateKey <= checkOutDate;
+      } else if (checkInDate && !checkOutDate) {
+        // チェックアウト未定の場合、チェックインだけハイライト
+        return dateKey === checkInDate;
       }
       return false;
     }
 
     /**
-     * チェックイン・チェックアウトが変更されたら、
-     * カレンダー再描画 & フォームのhiddenフィールドへ反映
+     * カレンダー再描画 + フォームに選択日付を反映
      */
     function updateSelectedDates() {
-      // hiddenフィールドにセット
-      document.getElementById("checkin-date").value = checkInDate ? checkInDate : "";
-      document.getElementById("checkout-date").value = checkOutDate ? checkOutDate : "";
+      // hiddenフィールドに反映
+      document.getElementById("checkin-date").value = checkInDate || "";
+      document.getElementById("checkout-date").value = checkOutDate || "";
 
-      // カレンダーを再描画してハイライトを反映
+      // カレンダー再描画
       renderCalendar(currentYear, currentMonth);
     }
 
-    // 「前の月」ボタン
+    // 前の月ボタン
     document.getElementById("prev-month").addEventListener("click", () => {
       currentMonth--;
       if (currentMonth < 0) {
@@ -381,7 +363,7 @@
       renderCalendar(currentYear, currentMonth);
     });
 
-    // 「次の月」ボタン
+    // 次の月ボタン
     document.getElementById("next-month").addEventListener("click", () => {
       currentMonth++;
       if (currentMonth > 11) {
