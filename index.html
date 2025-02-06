@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>空室カレンダー</title>
   <style>
     /* 全体のデザイン */
@@ -17,19 +17,19 @@
       min-height: 100vh;
     }
 
-    /* カレンダーをまとめるメインコンテナ */
+    /* カレンダー＆フォームをまとめるコンテナ */
     #calendar-container {
       background: white;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
       width: 90%;
       max-width: 800px;
       text-align: center;
       margin-top: 20px;
     }
 
-    /* 見出し */
+    /* タイトル */
     h1 {
       font-size: 24px;
       color: #333;
@@ -64,6 +64,7 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 10px;
+      margin-bottom: 30px; /* カレンダー下の余白 */
     }
 
     .day-header {
@@ -72,7 +73,6 @@
       padding: 10px;
       border-radius: 5px;
       text-align: center;
-      cursor: default;
     }
 
     .day-cell {
@@ -82,7 +82,7 @@
       text-align: center;
       font-size: 14px;
       background-color: #f9f9f9;
-      cursor: pointer; /* クリックできるように */
+      cursor: pointer;
     }
 
     .day-cell.full {
@@ -107,16 +107,15 @@
     }
 
     /* 予約フォーム */
-    #reservation-form {
+    form#reservation-form {
       text-align: left;
-      margin-top: 20px;
       background: #ffffff;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
-    #reservation-form h2 {
+    form#reservation-form h2 {
       margin-bottom: 20px;
       font-size: 20px;
       color: #333;
@@ -144,6 +143,23 @@
       border-radius: 5px;
     }
 
+    /* 送信ボタン */
+    #submit-btn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 30px;
+      font-size: 16px;
+      background-color: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #submit-btn:hover {
+      background-color: #218838;
+    }
+
   </style>
 </head>
 <body>
@@ -158,9 +174,14 @@
       <!-- カレンダー日付がここに挿入されます -->
     </div>
 
-    <!-- カレンダーのすぐ下に予約フォームを配置 -->
-    <div id="reservation-form">
+    <!-- 予約フォーム（同じコンテナ内に設置） -->
+    <!-- 実際に送信先を用意する場合は、actionにサーバのURLを指定してください -->
+    <form id="reservation-form" method="POST" action="/reservation">
       <h2>ご予約情報</h2>
+
+      <!-- 選択した日付をセットするための隠しフィールド -->
+      <input type="hidden" id="selected-date" name="selected-date" />
+
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
         <select id="room-category" name="room-category">
@@ -172,21 +193,23 @@
       </div>
       <div class="form-group">
         <label for="name">氏名：</label>
-        <input type="text" id="name" name="name" placeholder="例）山田 太郎">
+        <input type="text" id="name" name="name" placeholder="例）山田 太郎" required/>
       </div>
       <div class="form-group">
         <label for="phone">電話番号：</label>
-        <input type="text" id="phone" name="phone" placeholder="例）090-1234-5678">
+        <input type="text" id="phone" name="phone" placeholder="例）090-1234-5678" required/>
       </div>
       <div class="form-group">
         <label for="email">メールアドレス：</label>
-        <input type="email" id="email" name="email" placeholder="例）example@example.com">
+        <input type="email" id="email" name="email" placeholder="例）example@example.com" required/>
       </div>
       <div class="form-group">
         <label for="guests">宿泊人数：</label>
-        <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力">
+        <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力" required/>
       </div>
-    </div>
+
+      <button type="submit" id="submit-btn">送信</button>
+    </form>
   </div>
 
   <script>
@@ -201,7 +224,7 @@
       "2025-03-05": { available: 2, price: 6000 },
     };
 
-    let currentMonth = 1; // 2月 (JavaScriptの月は0-index)
+    let currentMonth = 1; // 2月 (JavaScriptでは0=1月,1=2月,...)
     let currentYear = 2025;
 
     // カレンダーを描画する関数
@@ -256,11 +279,13 @@
           dayCell.textContent = day;
         }
 
-        // クリックで予約フォームへスクロール
+        // 日付セルのクリック処理
         dayCell.addEventListener("click", () => {
-          document.getElementById("reservation-form").scrollIntoView({
-            behavior: "smooth"
-          });
+          // フォームへスクロール
+          document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
+          // 選択した日付を hiddenフィールドにセット
+          const hiddenDateInput = document.getElementById("selected-date");
+          hiddenDateInput.value = dateKey;
         });
 
         calendar.appendChild(dayCell);
