@@ -426,4 +426,151 @@
         return dateKey === checkInDate;
       }
       return false;
-   
+    }
+
+    function updateSelectedDates() {
+      document.getElementById("checkin-date").value = checkInDate || "";
+      document.getElementById("checkout-date").value = checkOutDate || "";
+      renderCalendar(currentYear, currentMonth);
+    }
+
+    document.getElementById("prev-month").addEventListener("click", () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
+      renderCalendar(currentYear, currentMonth);
+    });
+    document.getElementById("next-month").addEventListener("click", () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
+      renderCalendar(currentYear, currentMonth);
+    });
+    document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
+    renderCalendar(currentYear, currentMonth);
+
+    /******************************************************
+     * 3) 予約フォーム送信 → Firestoreに登録 & 在庫を減らす
+     ******************************************************/
+    const reservationForm = document.getElementById('reservation-form');
+    reservationForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const checkinDate = document.getElementById('checkin-date').value;   // YYYY-MM-DD
+      const checkoutDate = document.getElementById('checkout-date').value; // YYYY-MM-DD
+      const roomCategory = document.getElementById('room-category').value;
+      const name = document.getElementById('name').value;
+      const phone = document.getElementById('phone').value;
+      const email = document.getElementById('email').value;
+      const guests = Number(document.getElementById('guests').value);
+
+      if (!checkinDate || !checkoutDate || !roomCategory) {
+        alert("チェックイン日・チェックアウト日・部屋カテゴリーは必須です");
+        return;
+      }
+
+      try {
+        // 在庫管理：ここでは簡易的に「チェックイン日」の在庫を1減らすだけの例
+        const docId = `${checkinDate}_${roomCategory}`; // 例: "2025-02-02_standard"
+        const roomRef = doc(db, "rooms", docId);
+
+        // reservations コレクション参照
+        const reservationsCol = collection(db, "reservations");
+
+        await runTransaction(db, async (transaction) => {
+          // 1) 指定日の在庫を確認 & デクリメント
+          const roomSnap = await transaction.get(roomRef);
+          if (!roomSnap.exists()) {
+            throw new Error("在庫データが存在しません: " + docId);
+          }
+          const roomData = roomSnap.data();
+          if (roomData.available <= 0) {
+            throw new Error("指定日の部屋在庫がありません");
+          }
+          transaction.update(roomRef, {
+            available: roomData.available - 1
+          });
+
+          // 2) 予約情報を Firestore に登録
+          const newReservation = {
+            checkInDate: checkinDate,
+            checkOutDate: checkoutDate,
+            roomCategory,
+            name,
+            phone,
+            email,
+            guests,
+            createdAt: serverTimestamp()
+          };
+          await addDoc(reservationsCol, newReservation);
+        });
+
+        alert("予約を登録しました");
+        reservationForm.reset();
+
+        // 選択日・フォームをリセット
+        checkInDate = null;
+        checkOutDate = null;
+        updateSelectedDates();
+      } catch (err) {
+        console.error("予約登録時エラー:", err);
+        alert("予約登録に失敗しました: " + err.message);
+      }
+    });
+
+    /******************************************************
+     * 4) 予約台帳 (reservations) のリアルタイム表示
+     ******************************************************/
+    const reservationList = document.getElementById('reservation-list');
+    const qReservations = query(
+      collection(db, "reservations"),
+      orderBy("createdAt", "desc") // 新しい順に並べる
+    );
+    onSnapshot(qReservations, (snapshot) => {
+      reservationList.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const r = docSnap.data();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.checkInDate || ""}</td>
+          <td>${r.checkOutDate || ""}</td>
+          <td>${r.roomCategory || ""}</td>
+          <td>${r.name || ""}</td>
+          <td>${r.phone || ""}</td>
+          <td>${r.email || ""}</td>
+          <td>${r.guests || ""}</td>
+        `;
+        reservationList.appendChild(tr);
+      });
+    });
+
+    /******************************************************
+     * 5) 部屋在庫 (rooms) のリアルタイム表示
+     ******************************************************/
+    const inventoryList = document.getElementById('inventory-list');
+    const qRooms = collection(db, "rooms"); // 全在庫を取得
+    onSnapshot(qRooms, (snapshot) => {
+      inventoryList.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        // docSnap.idが "2025-02-02_standard" のような形かもしれません
+        // date, roomCategory フィールドがあればそちら優先で表示
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${d.date || docSnap.id}</td>
+          <td>${d.roomCategory || "—"}</td>
+          <td>${d.available !== undefined ? d.available : "—"}</td>
+        `;
+        inventoryList.appendChild(tr);
+      });
+    });
+
+  </script>
+</body>
+</html>
