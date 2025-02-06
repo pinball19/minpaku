@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>空室カレンダー（確認画面付き）</title>
+  <title>空室カレンダー（部屋数追加）</title>
   <style>
     /* 全体のデザイン */
     body {
@@ -232,6 +232,14 @@
           <option value="suite">スイート</option>
         </select>
       </div>
+
+      <!-- ★ 追加: 部屋数 -->
+      <div class="form-group">
+        <label for="room-count">部屋数：</label>
+        <input type="number" id="room-count" min="1" placeholder="部屋数" required/>
+      </div>
+      <!-- ★ 追加ここまで -->
+
       <div class="form-group">
         <label for="name">氏名：</label>
         <input type="text" id="name" placeholder="例）山田 太郎" required/>
@@ -270,6 +278,14 @@
         <span class="confirm-label">部屋カテゴリー：</span>
         <span id="confirm-room"></span>
       </div>
+
+      <!-- ★ 追加: 部屋数を表示するフィールド -->
+      <div class="confirm-field">
+        <span class="confirm-label">部屋数：</span>
+        <span id="confirm-roomcount"></span>
+      </div>
+      <!-- ★ 追加ここまで -->
+
       <div class="confirm-field">
         <span class="confirm-label">氏名：</span>
         <span id="confirm-name"></span>
@@ -312,6 +328,7 @@
       messagingSenderId: "215585745043",
       appId: "1:215585745043:web:0c70ac99c5066b56cd4566"
     };
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
@@ -463,6 +480,7 @@
     const confirmCheckin = document.getElementById("confirm-checkin");
     const confirmCheckout = document.getElementById("confirm-checkout");
     const confirmRoom = document.getElementById("confirm-room");
+    const confirmRoomCount = document.getElementById("confirm-roomcount"); // ★追加
     const confirmName = document.getElementById("confirm-name");
     const confirmPhone = document.getElementById("confirm-phone");
     const confirmEmail = document.getElementById("confirm-email");
@@ -473,12 +491,13 @@
       const cIn = document.getElementById("checkin-date").value;
       const cOut = document.getElementById("checkout-date").value;
       const room = document.getElementById("room-category").value;
+      const roomCount = document.getElementById("room-count").value; // ★追加
       const name = document.getElementById("name").value;
       const phone = document.getElementById("phone").value;
       const email = document.getElementById("email").value;
       const guests = document.getElementById("guests").value;
 
-      if (!cIn || !cOut || !room || !name || !phone || !email || !guests) {
+      if (!cIn || !cOut || !room || !roomCount || !name || !phone || !email || !guests) {
         alert("未入力の項目があります。");
         return;
       }
@@ -487,6 +506,7 @@
       confirmCheckin.textContent = cIn;
       confirmCheckout.textContent = cOut;
       confirmRoom.textContent = room;
+      confirmRoomCount.textContent = roomCount; // ★追加
       confirmName.textContent = name;
       confirmPhone.textContent = phone;
       confirmEmail.textContent = email;
@@ -513,6 +533,7 @@
         const cIn = document.getElementById("checkin-date").value;
         const cOut = document.getElementById("checkout-date").value;
         const room = document.getElementById("room-category").value;
+        const roomCount = Number(document.getElementById("room-count").value); // ★追加
         const name = document.getElementById("name").value;
         const phone = document.getElementById("phone").value;
         const email = document.getElementById("email").value;
@@ -524,6 +545,7 @@
           checkInDate: cIn,
           checkOutDate: cOut,
           roomCategory: room,
+          roomCount: roomCount, // ★追加
           name,
           phone,
           email,
@@ -542,7 +564,6 @@
       } catch (err) {
         console.error("予約確定エラー:", err);
         alert("予約確定に失敗しました: " + err.message);
-        // モーダル閉じないままでもOKです。必要なら閉じる処理を
       }
     });
   </script>
