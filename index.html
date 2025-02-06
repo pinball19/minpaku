@@ -16,6 +16,8 @@
       align-items: flex-start;
       min-height: 100vh;
     }
+
+    /* カレンダー＆フォームをまとめるコンテナ */
     #calendar-container {
       background: white;
       padding: 20px;
@@ -26,17 +28,22 @@
       text-align: center;
       margin-top: 20px;
     }
+
+    /* タイトル */
     h1 {
       font-size: 24px;
       color: #333;
       margin-bottom: 20px;
     }
+
+    /* 月切り替えボタン */
     .month-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
     }
+
     button {
       padding: 10px 20px;
       font-size: 14px;
@@ -56,8 +63,9 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 10px;
-      margin-bottom: 30px;
+      margin-bottom: 30px; /* カレンダー下の余白 */
     }
+
     .day-header {
       font-weight: bold;
       background-color: #e9ecef;
@@ -65,39 +73,44 @@
       border-radius: 5px;
       text-align: center;
     }
+
+    /* ▼ 日付セルのデザインを統一する ▼ */
     .day-cell {
       border: 1px solid #ccc;
       border-radius: 5px;
       font-size: 14px;
+      /* 高さを固定して中央寄せ */
       height: 80px;
       display: flex;
-      flex-direction: column;
+      flex-direction: column; /* 縦に複数行があってもOK */
       justify-content: center;
       align-items: center;
+      /* デフォルトはクリック不可を想定 */
       cursor: default;
       background-color: #f9f9f9;
       position: relative;
     }
+
     .day-cell.full {
       background-color: #ffeaea;
       color: #d9534f;
     }
+
     .day-cell.available {
       background-color: #e8fbe8;
       color: #28a745;
-      cursor: pointer;
+      cursor: pointer; /* 空室だけクリック可 */
     }
+
     .day-cell.no-data {
       color: #ccc;
       background-color: #f9f9f9;
     }
+
     .price {
       font-size: 12px;
       font-weight: bold;
       margin-top: 5px;
-    }
-    .day-cell.selected-range {
-      background-color: #ffd966 !important;
     }
 
     /* 予約フォーム */
@@ -114,6 +127,7 @@
       color: #333;
       text-align: center;
     }
+
     .form-group {
       margin-bottom: 15px;
     }
@@ -132,6 +146,8 @@
       border: 1px solid #ccc;
       border-radius: 5px;
     }
+
+    /* 送信ボタン */
     #submit-btn {
       display: block;
       margin: 20px auto 0;
@@ -147,52 +163,36 @@
       background-color: #218838;
     }
 
-    /* スマホなど画面が狭い場合 */
+    /* ▼ 選択範囲を強く上書きする ▼ */
+    .day-cell.selected-range {
+      background-color: #ffd966 !important; /* 不透明でしっかり上書き */
+    }
+
+    /* ▼ スマホなど画面が狭い場合のレイアウト調整 ▼ */
     @media (max-width: 600px) {
+      /* カレンダーの隙間を減らす */
       #calendar {
         gap: 5px;
       }
+      /* 日付セルを小さくし、文字をやや縮小 */
       .day-cell {
         height: 60px;
         font-size: 12px;
       }
+      /* 曜日ヘッダもフォントとパディングを縮める */
       .day-header {
         font-size: 12px;
         padding: 5px;
       }
+      /* コンテナのパディングを少し減らす */
       #calendar-container {
         padding: 10px;
       }
     }
 
-    /* 予約台帳・在庫一覧 */
-    #reservation-ledger,
-    #room-inventory {
-      background: white;
-      margin-top: 30px;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      width: 90%;
-      max-width: 800px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    table th, table td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    h2 {
-      margin-top: 0;
-    }
   </style>
 </head>
 <body>
-  <!-- カレンダー・予約フォーム -->
   <div id="calendar-container">
     <h1>空室カレンダー</h1>
     <div class="month-header">
@@ -200,10 +200,14 @@
       <span id="current-month">2025年2月</span>
       <button id="next-month">次の月</button>
     </div>
-    <div id="calendar"></div>
+    <div id="calendar">
+      <!-- カレンダー日付がここに挿入されます -->
+    </div>
 
-    <form id="reservation-form">
+    <!-- 予約フォーム（同じコンテナ内に設置） -->
+    <form id="reservation-form" method="POST" action="/reservation">
       <h2>ご予約情報</h2>
+      <!-- 選択したチェックイン日・チェックアウト日をセットするための隠しフィールド -->
       <input type="hidden" id="checkin-date" name="checkin-date" />
       <input type="hidden" id="checkout-date" name="checkout-date" />
 
@@ -237,119 +241,28 @@
     </form>
   </div>
 
-  <!-- 予約台帳 -->
-  <div id="reservation-ledger">
-    <h2>予約台帳</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>チェックイン</th>
-          <th>チェックアウト</th>
-          <th>部屋カテゴリー</th>
-          <th>氏名</th>
-          <th>電話番号</th>
-          <th>メールアドレス</th>
-          <th>人数</th>
-        </tr>
-      </thead>
-      <tbody id="reservation-list"></tbody>
-    </table>
-  </div>
-
-  <!-- 部屋在庫一覧 -->
-  <div id="room-inventory">
-    <h2>部屋在庫一覧</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>日付</th>
-          <th>部屋タイプ</th>
-          <th>残在庫</th>
-          <th>料金</th>
-        </tr>
-      </thead>
-      <tbody id="inventory-list"></tbody>
-    </table>
-  </div>
-
-  <!-- Firebase SDK (Modular)をCDNから読み込み (バージョンは適宜修正) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import {
-      getFirestore,
-      doc,
-      collection,
-      onSnapshot,
-      runTransaction,
-      serverTimestamp,
-      addDoc,
-      query,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
-    // ▼ あなたのFirebaseプロジェクト設定を貼り付け
-    const firebaseConfig = {
-      apiKey: "AIzaSyCnRbmcPezD4Osisss6XebmU15ukBqttQw",
-      authDomain: "slack-bot-firebase-7991a.firebaseapp.com",
-      projectId: "slack-bot-firebase-7991a",
-      storageBucket: "slack-bot-firebase-7991a.firebasestorage.app",
-      messagingSenderId: "215585745043",
-      appId: "1:215585745043:web:0c70ac99c5066b56cd4566"
+  <script>
+    // 空室状況データ（一部サンプル）
+    const availabilityData = {
+      "2025-02-01": { available: 0, price: null },
+      "2025-02-02": { available: 3, price: 5000 },
+      "2025-02-03": { available: 5, price: 4500 },
+      "2025-02-08": { available: 0, price: null },
+      "2025-02-11": { available: 2, price: 5600 },
+      "2025-03-01": { available: 0, price: null },
+      "2025-03-05": { available: 2, price: 6000 },
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    /******************************************************
-     * カレンダー表示用のデータ: Firestoreから取得
-     ******************************************************/
     let currentMonth = 1; // 2月
     let currentYear = 2025;
-
-    // カレンダー描画に使う: { "YYYY-MM-DD": { totalAvailable: 0, minPrice: null } }
-    let calendarData = {};
 
     // チェックイン・チェックアウト
     let checkInDate = null;
     let checkOutDate = null;
 
-    // roomsコレクションを監視し、dateごとに集計
-    const roomsRef = collection(db, "rooms");
-    onSnapshot(roomsRef, (snapshot) => {
-      // calendarData を毎回作り直す
-      calendarData = {};
-
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        // data.date: "2025-02-02"
-        // data.available: 3, data.price: 5000, ...
-        const dateKey = data.date;
-
-        if (!calendarData[dateKey]) {
-          // 初期値
-          calendarData[dateKey] = {
-            totalAvailable: 0,
-            minPrice: null
-          };
-        }
-
-        // 各カテゴリーの available を合計し、minPrice を計算
-        const current = calendarData[dateKey];
-        current.totalAvailable += data.available;
-        if (data.price !== null) {
-          if (current.minPrice === null || data.price < current.minPrice) {
-            current.minPrice = data.price;
-          }
-        }
-      });
-
-      // カレンダー再描画
-      renderCalendar(currentYear, currentMonth);
-    });
-
-    /******************************************************
+    /**
      * カレンダー描画
-     ******************************************************/
+     */
     function renderCalendar(year, month) {
       const calendar = document.getElementById("calendar");
       calendar.innerHTML = "";
@@ -367,7 +280,7 @@
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      // 月の最初の曜日まで空セル
+      // 月の最初の曜日まで空白セル
       for (let i = 0; i < startDay; i++) {
         const emptyCell = document.createElement("div");
         emptyCell.classList.add("day-cell", "no-data");
@@ -379,28 +292,32 @@
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
-        // Firestore からの集計データ (calendarData) をもとに表示
-        const dayInfo = calendarData[dateKey];
-        if (dayInfo && dayInfo.totalAvailable > 0) {
-          // 空室あり
-          dayCell.classList.add("available");
-          dayCell.innerHTML = `
-            <div>${day}</div>
-            <div>空室: ${dayInfo.totalAvailable}</div>
-            <div class="price">¥${dayInfo.minPrice ?? "???"}</div>
-          `;
-          dayCell.addEventListener("click", () => {
-            selectDate(dateKey);
-          });
-        } else if (dayInfo && dayInfo.totalAvailable === 0) {
-          // 満室
-          dayCell.classList.add("full");
-          dayCell.innerHTML = `
-            <div>${day}</div>
-            <div>満室</div>
-          `;
+        // 空室状況の表示
+        if (availabilityData[dateKey]) {
+          const { available, price } = availabilityData[dateKey];
+          if (available > 0) {
+            // ▼ 空室の日だけクリックを可能にする ▼
+            dayCell.classList.add("available");
+            dayCell.innerHTML = `
+              <div>${day}</div>
+              <div>空室: ${available}</div>
+              <div class="price">¥${price}</div>
+            `;
+            // ▼ 空室のみイベントを付与
+            dayCell.addEventListener("click", () => {
+              selectDate(dateKey);
+              // ★ ここではスクロールさせない（チェックアウト確定までは遷移しない）
+            });
+          } else {
+            // 満室
+            dayCell.classList.add("full");
+            dayCell.innerHTML = `
+              <div>${day}</div>
+              <div>満室</div>
+            `;
+          }
         } else {
-          // データなし or 未登録
+          // データがない日
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
@@ -414,14 +331,22 @@
       }
     }
 
+    /**
+     * 日付選択ロジック
+     */
     function selectDate(dateKey) {
+      // 両方選択済みなら、一度リセットして新しいチェックインにする
       if (checkInDate && checkOutDate) {
-        // リセットして新しいチェックインに
         checkInDate = dateKey;
         checkOutDate = null;
-      } else if (!checkInDate) {
+      }
+      // チェックインが未選択なら
+      else if (!checkInDate) {
         checkInDate = dateKey;
-      } else if (!checkOutDate) {
+      }
+      // チェックインのみ選択済みなら
+      else if (!checkOutDate) {
+        // チェックアウト日がチェックインより前の場合は入れ替え
         if (dateKey < checkInDate) {
           checkOutDate = checkInDate;
           checkInDate = dateKey;
@@ -429,12 +354,18 @@
           checkOutDate = dateKey;
         }
       }
+
       updateSelectedDates();
+
+      // ★ チェックアウト日が選択確定したらスクロールさせる
       if (checkInDate && checkOutDate) {
         document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
       }
     }
 
+    /**
+     * 指定日が選択範囲内(チェックイン～チェックアウト)かどうか
+     */
     function isInSelectedRange(dateKey) {
       if (checkInDate && checkOutDate) {
         return dateKey >= checkInDate && dateKey <= checkOutDate;
@@ -444,12 +375,19 @@
       return false;
     }
 
+    /**
+     * カレンダー再描画 + フォームに選択日付を反映
+     */
     function updateSelectedDates() {
+      // hiddenフィールドに反映
       document.getElementById("checkin-date").value = checkInDate || "";
       document.getElementById("checkout-date").value = checkOutDate || "";
+
+      // カレンダー再描画
       renderCalendar(currentYear, currentMonth);
     }
 
+    // 前の月ボタン
     document.getElementById("prev-month").addEventListener("click", () => {
       currentMonth--;
       if (currentMonth < 0) {
@@ -459,6 +397,8 @@
       document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
       renderCalendar(currentYear, currentMonth);
     });
+
+    // 次の月ボタン
     document.getElementById("next-month").addEventListener("click", () => {
       currentMonth++;
       if (currentMonth > 11) {
@@ -468,123 +408,10 @@
       document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
       renderCalendar(currentYear, currentMonth);
     });
+
     // 初期表示
     document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
     renderCalendar(currentYear, currentMonth);
-
-    /******************************************************
-     * 予約フォーム送信時 → rooms で在庫を減らし、reservations へ登録
-     ******************************************************/
-    const reservationForm = document.getElementById('reservation-form');
-    reservationForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const checkinDate = document.getElementById('checkin-date').value;
-      const checkoutDate = document.getElementById('checkout-date').value;
-      const roomCategory = document.getElementById('room-category').value;
-      const name = document.getElementById('name').value;
-      const phone = document.getElementById('phone').value;
-      const email = document.getElementById('email').value;
-      const guests = Number(document.getElementById('guests').value);
-
-      if (!checkinDate || !checkoutDate || !roomCategory) {
-        alert("チェックイン日・チェックアウト日・部屋カテゴリーは必須です");
-        return;
-      }
-
-      try {
-        // 在庫を dateKey_roomCategory で管理
-        // 例: "2025-02-02_standard"
-        const docId = `${checkinDate}_${roomCategory}`;
-        const roomDocRef = doc(db, "rooms", docId);
-        const reservationsCol = collection(db, "reservations");
-
-        await runTransaction(db, async (transaction) => {
-          const roomSnap = await transaction.get(roomDocRef);
-          if (!roomSnap.exists()) {
-            throw new Error("在庫データが存在しません: " + docId);
-          }
-          const roomData = roomSnap.data();
-          if (roomData.available <= 0) {
-            throw new Error("指定日の在庫が不足しています");
-          }
-          // 在庫を1減らす
-          transaction.update(roomDocRef, {
-            available: roomData.available - 1
-          });
-
-          // 予約コレクションに登録
-          await addDoc(reservationsCol, {
-            checkInDate: checkinDate,
-            checkOutDate: checkoutDate,
-            roomCategory,
-            name,
-            phone,
-            email,
-            guests,
-            createdAt: serverTimestamp()
-          });
-        });
-
-        alert("予約を登録しました");
-        reservationForm.reset();
-
-        // 選択済み日付をリセット
-        checkInDate = null;
-        checkOutDate = null;
-        updateSelectedDates();
-
-      } catch (err) {
-        console.error("予約登録エラー:", err);
-        alert("予約登録に失敗しました: " + err.message);
-      }
-    });
-
-    /******************************************************
-     * 予約台帳 (reservations) リアルタイム表示
-     ******************************************************/
-    const reservationList = document.getElementById('reservation-list');
-    onSnapshot(
-      query(collection(db, "reservations"), orderBy("createdAt", "desc")),
-      (snapshot) => {
-        reservationList.innerHTML = "";
-        snapshot.forEach((docSnap) => {
-          const r = docSnap.data();
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.checkInDate || ""}</td>
-            <td>${r.checkOutDate || ""}</td>
-            <td>${r.roomCategory || ""}</td>
-            <td>${r.name || ""}</td>
-            <td>${r.phone || ""}</td>
-            <td>${r.email || ""}</td>
-            <td>${r.guests || ""}</td>
-          `;
-          reservationList.appendChild(tr);
-        });
-      }
-    );
-
-    /******************************************************
-     * 部屋在庫 (rooms) リアルタイム表示
-     ******************************************************/
-    const inventoryList = document.getElementById('inventory-list');
-    onSnapshot(roomsRef, (snapshot) => {
-      inventoryList.innerHTML = "";
-      snapshot.forEach((docSnap) => {
-        const d = docSnap.data();
-        // docId = "2025-02-02_standard"
-        // fields: { date: "2025-02-02", roomCategory: "standard", available: 3, price: 5000, ... }
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${d.date || docSnap.id}</td>
-          <td>${d.roomCategory || ""}</td>
-          <td>${d.available ?? ""}</td>
-          <td>${d.price ?? ""}</td>
-        `;
-        inventoryList.appendChild(tr);
-      });
-    });
   </script>
 </body>
 </html>
