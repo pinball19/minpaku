@@ -9,87 +9,141 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
+      margin: 20px;
     }
 
     #calendar-container {
-      margin: 20px;
+      display: inline-block;
+      text-align: left;
+    }
+
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
     #calendar {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
+      gap: 5px;
     }
 
-    .date-cell {
+    .day-cell {
       border: 1px solid #ccc;
       padding: 10px;
       border-radius: 5px;
       text-align: center;
+      font-size: 12px;
     }
 
-    .date-cell.full {
-      background-color: #f8d7da;
-      color: #721c24;
+    .day-header {
+      font-weight: bold;
+      background-color: #f1f1f1;
+      padding: 5px;
     }
 
-    .date-cell.available {
-      background-color: #d4edda;
-      color: #155724;
+    .day-cell.full {
+      background-color: #ffeaea;
+      color: #d9534f;
     }
 
-    .date-info {
+    .day-cell.available {
+      background-color: #eaffea;
+      color: #28a745;
+    }
+
+    .day-cell.no-data {
+      background-color: #f9f9f9;
+      color: #999;
+    }
+
+    .price {
       font-size: 14px;
+      font-weight: bold;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
   <h1>空室カレンダー</h1>
   <div id="calendar-container">
-    <button id="prev-month">前の月</button>
-    <button id="next-month">次の月</button>
-    <div id="calendar"></div>
+    <div class="month-header">
+      <button id="prev-month">前の月</button>
+      <span id="current-month">2025年2月</span>
+      <button id="next-month">次の月</button>
+    </div>
+    <div id="calendar">
+      <!-- カレンダー日付がここに挿入されます -->
+    </div>
   </div>
+
   <script>
     // JavaScript
     const availabilityData = {
       "2025-02-01": { available: 0, price: null },
       "2025-02-02": { available: 3, price: 5000 },
       "2025-02-03": { available: 5, price: 4500 },
+      "2025-02-08": { available: 0, price: null },
+      "2025-02-11": { available: 2, price: 5600 },
       "2025-03-01": { available: 0, price: null },
       "2025-03-05": { available: 2, price: 6000 },
-      // 他の日付のデータを追加
     };
 
-    let currentMonth = new Date().getMonth();
-    let currentYear = new Date().getFullYear();
+    let currentMonth = 1; // 2月
+    let currentYear = 2025;
 
     function renderCalendar(year, month) {
       const calendar = document.getElementById("calendar");
       calendar.innerHTML = "";
 
+      const daysInWeek = ["日", "月", "火", "水", "木", "金", "土"];
+      daysInWeek.forEach(day => {
+        const headerCell = document.createElement("div");
+        headerCell.classList.add("day-header");
+        headerCell.textContent = day;
+        calendar.appendChild(headerCell);
+      });
+
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
       const daysInMonth = lastDay.getDate();
+      const startDay = firstDay.getDay();
 
-      for (let i = 1; i <= daysInMonth; i++) {
-        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
-        const cell = document.createElement("div");
-        cell.classList.add("date-cell");
+      for (let i = 0; i < startDay; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.classList.add("day-cell", "no-data");
+        calendar.appendChild(emptyCell);
+      }
 
-        const dateInfo = availabilityData[dateKey];
-        if (dateInfo) {
-          if (dateInfo.available > 0) {
-            cell.classList.add("available");
-            cell.innerHTML = `<div>${dateKey}</div><div class="date-info">空室: ${dateInfo.available}<br>¥${dateInfo.price}</div>`;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const dayCell = document.createElement("div");
+        dayCell.classList.add("day-cell");
+
+        if (availabilityData[dateKey]) {
+          const { available, price } = availabilityData[dateKey];
+          if (available > 0) {
+            dayCell.classList.add("available");
+            dayCell.innerHTML = `
+              <div>${day}</div>
+              <div>空室: ${available}</div>
+              <div class="price">¥${price}</div>
+            `;
           } else {
-            cell.classList.add("full");
-            cell.innerHTML = `<div>${dateKey}</div><div class="date-info">満室</div>`;
+            dayCell.classList.add("full");
+            dayCell.innerHTML = `
+              <div>${day}</div>
+              <div>満室</div>
+            `;
           }
         } else {
-          cell.innerHTML = `<div>${dateKey}</div><div class="date-info">データなし</div>`;
+          dayCell.classList.add("no-data");
+          dayCell.textContent = day;
         }
-        calendar.appendChild(cell);
+
+        calendar.appendChild(dayCell);
       }
     }
 
@@ -99,6 +153,7 @@
         currentMonth = 11;
         currentYear--;
       }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
       renderCalendar(currentYear, currentMonth);
     });
 
@@ -108,9 +163,11 @@
         currentMonth = 0;
         currentYear++;
       }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
       renderCalendar(currentYear, currentMonth);
     });
 
+    document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
     renderCalendar(currentYear, currentMonth);
   </script>
 </body>
