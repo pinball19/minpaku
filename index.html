@@ -11,18 +11,13 @@
       margin: 0;
       padding: 0;
       background: linear-gradient(to bottom, #f7faff, #d8ecf3);
-    }
-
-    /* カレンダーを画面中央に */
-    #main-container {
       display: flex;
       justify-content: center;
       align-items: flex-start;
       min-height: 100vh;
-      padding: 20px;
-      box-sizing: border-box;
     }
 
+    /* カレンダーをまとめるメインコンテナ */
     #calendar-container {
       background: white;
       padding: 20px;
@@ -31,6 +26,7 @@
       width: 90%;
       max-width: 800px;
       text-align: center;
+      margin-top: 20px;
     }
 
     /* 見出し */
@@ -70,6 +66,15 @@
       gap: 10px;
     }
 
+    .day-header {
+      font-weight: bold;
+      background-color: #e9ecef;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      cursor: default;
+    }
+
     .day-cell {
       border: 1px solid #ccc;
       padding: 10px;
@@ -83,28 +88,16 @@
     .day-cell.full {
       background-color: #ffeaea;
       color: #d9534f;
-      cursor: pointer; /* 満室でもフォームに進む場合はクリック可能に */
     }
 
     .day-cell.available {
       background-color: #e8fbe8;
       color: #28a745;
-      cursor: pointer;
     }
 
     .day-cell.no-data {
       color: #ccc;
       background-color: #f9f9f9;
-      cursor: pointer;
-    }
-
-    .day-header {
-      font-weight: bold;
-      background-color: #e9ecef;
-      padding: 10px;
-      border-radius: 5px;
-      text-align: center;
-      cursor: default;
     }
 
     .price {
@@ -115,34 +108,33 @@
 
     /* 予約フォーム */
     #reservation-form {
-      background: white;
-      margin-top: 40px;
+      text-align: left;
+      margin-top: 20px;
+      background: #ffffff;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      width: 90%;
-      max-width: 800px;
     }
 
     #reservation-form h2 {
       margin-bottom: 20px;
       font-size: 20px;
       color: #333;
+      text-align: center;
     }
 
     .form-group {
       margin-bottom: 15px;
-      text-align: left;
     }
 
     .form-group label {
-      display: inline-block;
+      display: block;
       margin-bottom: 5px;
       font-weight: bold;
       color: #333;
     }
 
-    .form-group input, 
+    .form-group input,
     .form-group select {
       width: 100%;
       padding: 8px;
@@ -155,49 +147,46 @@
   </style>
 </head>
 <body>
-  <div id="main-container">
-    <div id="calendar-container">
-      <h1>空室カレンダー</h1>
-      <div class="month-header">
-        <button id="prev-month">前の月</button>
-        <span id="current-month">2025年2月</span>
-        <button id="next-month">次の月</button>
-      </div>
-      <div id="calendar">
-        <!-- カレンダー日付がここに挿入されます -->
-      </div>
+  <div id="calendar-container">
+    <h1>空室カレンダー</h1>
+    <div class="month-header">
+      <button id="prev-month">前の月</button>
+      <span id="current-month">2025年2月</span>
+      <button id="next-month">次の月</button>
     </div>
-  </div>
+    <div id="calendar">
+      <!-- カレンダー日付がここに挿入されます -->
+    </div>
 
-  <!-- 予約フォーム（ページ下部） -->
-  <div id="reservation-form">
-    <h2>ご予約情報</h2>
-    <div class="form-group">
-      <label for="room-category">部屋カテゴリー：</label>
-      <select id="room-category" name="room-category">
-        <option value="">選択してください</option>
-        <option value="standard">スタンダード</option>
-        <option value="deluxe">デラックス</option>
-        <option value="suite">スイート</option>
-      </select>
+    <!-- カレンダーのすぐ下に予約フォームを配置 -->
+    <div id="reservation-form">
+      <h2>ご予約情報</h2>
+      <div class="form-group">
+        <label for="room-category">部屋カテゴリー：</label>
+        <select id="room-category" name="room-category">
+          <option value="">選択してください</option>
+          <option value="standard">スタンダード</option>
+          <option value="deluxe">デラックス</option>
+          <option value="suite">スイート</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="name">氏名：</label>
+        <input type="text" id="name" name="name" placeholder="例）山田 太郎">
+      </div>
+      <div class="form-group">
+        <label for="phone">電話番号：</label>
+        <input type="text" id="phone" name="phone" placeholder="例）090-1234-5678">
+      </div>
+      <div class="form-group">
+        <label for="email">メールアドレス：</label>
+        <input type="email" id="email" name="email" placeholder="例）example@example.com">
+      </div>
+      <div class="form-group">
+        <label for="guests">宿泊人数：</label>
+        <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力">
+      </div>
     </div>
-    <div class="form-group">
-      <label for="name">氏名：</label>
-      <input type="text" id="name" name="name" placeholder="例）山田 太郎">
-    </div>
-    <div class="form-group">
-      <label for="phone">電話番号：</label>
-      <input type="text" id="phone" name="phone" placeholder="例）090-1234-5678">
-    </div>
-    <div class="form-group">
-      <label for="email">メールアドレス：</label>
-      <input type="email" id="email" name="email" placeholder="例）example@example.com">
-    </div>
-    <div class="form-group">
-      <label for="guests">宿泊人数：</label>
-      <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力">
-    </div>
-    <!-- 必要に応じて送信ボタン等を追加 -->
   </div>
 
   <script>
