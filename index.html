@@ -303,11 +303,10 @@
               <div>空室: ${available}</div>
               <div class="price">¥${price}</div>
             `;
-            // ▼ 空室のみイベントを付与 ▼
+            // ▼ 空室のみイベントを付与
             dayCell.addEventListener("click", () => {
               selectDate(dateKey);
-              // フォームへスクロール（機能は残す）
-              document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
+              // ★ ここではスクロールさせない（チェックアウト確定までは遷移しない）
             });
           } else {
             // 満室
@@ -356,7 +355,12 @@
         }
       }
 
-      updateSelectedDates(); // カレンダー再描画＆フォームに反映
+      updateSelectedDates();
+
+      // ★ チェックアウト日が選択確定したらスクロールさせる
+      if (checkInDate && checkOutDate) {
+        document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
+      }
     }
 
     /**
