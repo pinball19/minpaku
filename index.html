@@ -11,14 +11,12 @@
       margin: 0;
       padding: 0;
       background: linear-gradient(to bottom, #f7faff, #d8ecf3);
-      display: flex;
-      flex-direction: column; /* 縦に積み重ねる */
-      align-items: center;    /* 中央寄せ */
-      min-height: 100vh;
+      /* display: flex; ... を削除し、通常のブロック要素で縦並びに */
+      /* もし中央寄せをしたい場合は .container 的な要素を用意して内包する方法もあります */
     }
 
     /* カレンダー＆フォームをまとめるコンテナ */
-    .content-container {
+    #calendar-container {
       background: white;
       padding: 20px;
       border-radius: 10px;
@@ -26,8 +24,7 @@
       width: 90%;
       max-width: 800px;
       text-align: center;
-      margin-top: 20px;
-      margin-bottom: 20px; /* 下との余白 */
+      margin: 20px auto; /* autoで左右中央寄せ */
     }
 
     /* タイトル */
@@ -154,25 +151,20 @@
       background-color: #218838;
     }
 
-    /* スマホなど画面が狭い場合 */
-    @media (max-width: 600px) {
-      #calendar {
-        gap: 5px;
-      }
-      .day-cell {
-        height: 60px;
-        font-size: 12px;
-      }
-      .day-header {
-        font-size: 12px;
-        padding: 5px;
-      }
-      .content-container {
-        padding: 10px;
-      }
+    /* 予約台帳・在庫一覧（下に配置） */
+    #reservation-ledger,
+    #room-inventory {
+      background: white;
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto; /* 横中央寄せ */
     }
 
-    /* 予約台帳・在庫一覧 */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -186,12 +178,30 @@
     h2 {
       margin-top: 0;
     }
+
+    /* スマホなど画面が狭い場合 */
+    @media (max-width: 600px) {
+      #calendar {
+        gap: 5px;
+      }
+      .day-cell {
+        height: 60px;
+        font-size: 12px;
+      }
+      .day-header {
+        font-size: 12px;
+        padding: 5px;
+      }
+      #calendar-container {
+        padding: 10px;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <!-- 1) カレンダー -->
-  <div class="content-container" id="calendar-container">
+  <!-- カレンダー・予約フォーム（最上部に配置） -->
+  <div id="calendar-container">
     <h1>空室カレンダー</h1>
     <div class="month-header">
       <button id="prev-month">前の月</button>
@@ -199,18 +209,15 @@
       <button id="next-month">次の月</button>
     </div>
     <div id="calendar"></div>
-  </div>
 
-  <!-- 2) 予約フォーム -->
-  <div class="content-container">
     <form id="reservation-form">
       <h2>ご予約情報</h2>
-      <input type="hidden" id="checkin-date" />
-      <input type="hidden" id="checkout-date" />
+      <input type="hidden" id="checkin-date" name="checkin-date" />
+      <input type="hidden" id="checkout-date" name="checkout-date" />
 
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
-        <select id="room-category" required>
+        <select id="room-category" name="room-category" required>
           <option value="">選択してください</option>
           <option value="standard">スタンダード</option>
           <option value="deluxe">デラックス</option>
@@ -219,27 +226,27 @@
       </div>
       <div class="form-group">
         <label for="name">氏名：</label>
-        <input type="text" id="name" placeholder="例）山田 太郎" required/>
+        <input type="text" id="name" name="name" placeholder="例）山田 太郎" required/>
       </div>
       <div class="form-group">
         <label for="phone">電話番号：</label>
-        <input type="tel" id="phone" placeholder="例）090-1234-5678" required/>
+        <input type="tel" id="phone" name="phone" placeholder="例）090-1234-5678" required/>
       </div>
       <div class="form-group">
         <label for="email">メールアドレス：</label>
-        <input type="email" id="email" placeholder="例）example@example.com" required/>
+        <input type="email" id="email" name="email" placeholder="例）example@example.com" required/>
       </div>
       <div class="form-group">
         <label for="guests">宿泊人数：</label>
-        <input type="number" id="guests" min="1" placeholder="人数を入力" required/>
+        <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力" required/>
       </div>
 
       <button type="submit" id="submit-btn">送信</button>
     </form>
   </div>
 
-  <!-- 3) 予約台帳 -->
-  <div class="content-container" id="reservation-ledger">
+  <!-- 予約台帳（カレンダー＆フォームの下） -->
+  <div id="reservation-ledger">
     <h2>予約台帳</h2>
     <table>
       <thead>
@@ -257,8 +264,8 @@
     </table>
   </div>
 
-  <!-- 4) 部屋在庫一覧 -->
-  <div class="content-container" id="room-inventory">
+  <!-- 部屋在庫一覧（さらに下） -->
+  <div id="room-inventory">
     <h2>部屋在庫一覧</h2>
     <table>
       <thead>
@@ -273,24 +280,13 @@
     </table>
   </div>
 
-  <!-- Firebase・Firestore を含むスクリプト(省略可) -->
+
+  <!-- Firebase & Firestore関連のスクリプトはそのまま -->
   <script type="module">
-    /****************************************************
-     * ここにJavaScript(Firestore連携・カレンダー描画)
-     * の処理を記載
-     ****************************************************/
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import {
-      getFirestore,
-      // ... runTransaction, etc.
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
-    // あなたのFirebase設定・連携処理・カレンダー処理・
-    // 予約フォーム送信処理・予約台帳/在庫一覧描画など
-    // これまでのコードをそのまま入れてください。
-
-    // 例: それぞれの getElementById() 参照先が変わらなければ、
-    //     機能的に動作は変わりません。
+    /******************************************************
+     * ここにFirebase設定・Firestore連携・カレンダー表示処理
+     * 予約フォーム送信処理などの既存コードを置いてください
+     ******************************************************/
   </script>
 </body>
 </html>
