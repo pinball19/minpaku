@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>空室カレンダー1</title>
+  <title>空室カレンダー</title>
   <style>
     /* 全体のデザイン */
     body {
@@ -74,15 +74,21 @@
       text-align: center;
     }
 
+    /* ▼ 日付セルのデザインを統一する ▼ */
     .day-cell {
       border: 1px solid #ccc;
-      padding: 10px;
       border-radius: 5px;
-      text-align: center;
       font-size: 14px;
+      /* 高さを固定して中央寄せ */
+      height: 80px;
+      display: flex;
+      flex-direction: column; /* 縦に複数行があってもOK */
+      justify-content: center;
+      align-items: center;
+      /* デフォルトはクリック不可を想定 */
+      cursor: default;
       background-color: #f9f9f9;
-      cursor: pointer; /* クリック可能に */
-      position: relative; /* ハイライトのために位置指定 */
+      position: relative;
     }
 
     .day-cell.full {
@@ -93,6 +99,7 @@
     .day-cell.available {
       background-color: #e8fbe8;
       color: #28a745;
+      cursor: pointer; /* 空室だけクリック可 */
     }
 
     .day-cell.no-data {
@@ -156,7 +163,7 @@
       background-color: #218838;
     }
 
-    /* ▼▼ ここが重要！選択範囲をより強く上書きする ▼▼ */
+    /* ▼ 選択範囲を強く上書きする ▼ */
     .day-cell.selected-range {
       background-color: #ffd966 !important; /* 不透明でしっかり上書き */
     }
@@ -262,16 +269,25 @@
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
+        // 空室状況の表示
         if (availabilityData[dateKey]) {
           const { available, price } = availabilityData[dateKey];
           if (available > 0) {
+            // ▼ 空室の日だけクリックを可能にする ▼
             dayCell.classList.add("available");
             dayCell.innerHTML = `
               <div>${day}</div>
               <div>空室: ${available}</div>
               <div class="price">¥${price}</div>
             `;
+            // ▼ 空室のみイベントを付与 ▼
+            dayCell.addEventListener("click", () => {
+              selectDate(dateKey);
+              // フォームへスクロール（機能は残す）
+              document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
+            });
           } else {
+            // 満室
             dayCell.classList.add("full");
             dayCell.innerHTML = `
               <div>${day}</div>
@@ -279,19 +295,12 @@
             `;
           }
         } else {
+          // データがない日
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
 
-        // 日付クリック
-        dayCell.addEventListener("click", () => {
-          // 日付を選択
-          selectDate(dateKey);
-          // フォームへスクロール（動きは残す）
-          document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
-        });
-
-        // ハイライト判定
+        // チェックイン～チェックアウトの範囲内ならハイライト
         if (isInSelectedRange(dateKey)) {
           dayCell.classList.add("selected-range");
         }
@@ -324,17 +333,16 @@
         }
       }
 
-      updateSelectedDates(); // カレンダー再描画＆hiddenフィールド更新
+      updateSelectedDates(); // カレンダー再描画＆フォームに反映
     }
 
     /**
-     * 日付が選択範囲内(チェックイン～チェックアウト)にあるかどうか
+     * 指定日が選択範囲内(チェックイン～チェックアウト)かどうか
      */
     function isInSelectedRange(dateKey) {
       if (checkInDate && checkOutDate) {
         return dateKey >= checkInDate && dateKey <= checkOutDate;
       } else if (checkInDate && !checkOutDate) {
-        // チェックアウト未定の場合、チェックインだけハイライト
         return dateKey === checkInDate;
       }
       return false;
