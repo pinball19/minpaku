@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>空室カレンダー</title>
+  <title>空室カレンダー（確認画面付き）</title>
   <style>
     /* 全体のデザイン */
     body {
@@ -63,7 +63,7 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 10px;
-      margin-bottom: 30px; /* カレンダー下の余白 */
+      margin-bottom: 30px;
     }
 
     .day-header {
@@ -74,43 +74,39 @@
       text-align: center;
     }
 
-    /* ▼ 日付セルのデザインを統一する ▼ */
     .day-cell {
       border: 1px solid #ccc;
       border-radius: 5px;
       font-size: 14px;
-      /* 高さを固定して中央寄せ */
       height: 80px;
       display: flex;
-      flex-direction: column; /* 縦に複数行があってもOK */
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      /* デフォルトはクリック不可を想定 */
       cursor: default;
       background-color: #f9f9f9;
       position: relative;
     }
-
     .day-cell.full {
       background-color: #ffeaea;
       color: #d9534f;
     }
-
     .day-cell.available {
       background-color: #e8fbe8;
       color: #28a745;
-      cursor: pointer; /* 空室だけクリック可 */
+      cursor: pointer;
     }
-
     .day-cell.no-data {
       color: #ccc;
       background-color: #f9f9f9;
     }
-
     .price {
       font-size: 12px;
       font-weight: bold;
       margin-top: 5px;
+    }
+    .day-cell.selected-range {
+      background-color: #ffd966 !important;
     }
 
     /* 予約フォーム */
@@ -127,7 +123,6 @@
       color: #333;
       text-align: center;
     }
-
     .form-group {
       margin-bottom: 15px;
     }
@@ -147,8 +142,8 @@
       border-radius: 5px;
     }
 
-    /* 送信ボタン */
-    #submit-btn {
+    /* ボタン */
+    .btn {
       display: block;
       margin: 20px auto 0;
       padding: 10px 30px;
@@ -158,38 +153,55 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      text-align: center;
     }
-    #submit-btn:hover {
+    .btn:hover {
       background-color: #218838;
     }
 
-    /* ▼ 選択範囲を強く上書きする ▼ */
-    .day-cell.selected-range {
-      background-color: #ffd966 !important; /* 不透明でしっかり上書き */
+    /* 確認画面（モーダルっぽいスタイル例） */
+    #confirm-modal {
+      display: none; /* 初期は非表示 */
+      position: fixed; /* 画面全体にかぶせる */
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    #confirm-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 80%;
+      margin: 0 auto;
+    }
+    .confirm-field {
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .confirm-label {
+      font-weight: bold;
+      margin-right: 5px;
     }
 
-    /* ▼ スマホなど画面が狭い場合のレイアウト調整 ▼ */
+    /* スマホなど画面が狭い場合 */
     @media (max-width: 600px) {
-      /* カレンダーの隙間を減らす */
       #calendar {
         gap: 5px;
       }
-      /* 日付セルを小さくし、文字をやや縮小 */
       .day-cell {
         height: 60px;
         font-size: 12px;
       }
-      /* 曜日ヘッダもフォントとパディングを縮める */
       .day-header {
         font-size: 12px;
         padding: 5px;
       }
-      /* コンテナのパディングを少し減らす */
       #calendar-container {
         padding: 10px;
       }
     }
-
   </style>
 </head>
 <body>
@@ -204,16 +216,16 @@
       <!-- カレンダー日付がここに挿入されます -->
     </div>
 
-    <!-- 予約フォーム（同じコンテナ内に設置） -->
-    <form id="reservation-form" method="POST" action="/reservation">
+    <!-- 予約フォーム -->
+    <form id="reservation-form">
       <h2>ご予約情報</h2>
       <!-- 選択したチェックイン日・チェックアウト日をセットするための隠しフィールド -->
-      <input type="hidden" id="checkin-date" name="checkin-date" />
-      <input type="hidden" id="checkout-date" name="checkout-date" />
+      <input type="hidden" id="checkin-date" />
+      <input type="hidden" id="checkout-date" />
 
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
-        <select id="room-category" name="room-category" required>
+        <select id="room-category" required>
           <option value="">選択してください</option>
           <option value="standard">スタンダード</option>
           <option value="deluxe">デラックス</option>
@@ -222,27 +234,91 @@
       </div>
       <div class="form-group">
         <label for="name">氏名：</label>
-        <input type="text" id="name" name="name" placeholder="例）山田 太郎" required/>
+        <input type="text" id="name" placeholder="例）山田 太郎" required/>
       </div>
       <div class="form-group">
         <label for="phone">電話番号：</label>
-        <input type="tel" id="phone" name="phone" placeholder="例）090-1234-5678" required/>
+        <input type="tel" id="phone" placeholder="例）090-1234-5678" required/>
       </div>
       <div class="form-group">
         <label for="email">メールアドレス：</label>
-        <input type="email" id="email" name="email" placeholder="例）example@example.com" required/>
+        <input type="email" id="email" placeholder="例）example@example.com" required/>
       </div>
       <div class="form-group">
         <label for="guests">宿泊人数：</label>
-        <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力" required/>
+        <input type="number" id="guests" min="1" placeholder="人数を入力" required/>
       </div>
 
-      <button type="submit" id="submit-btn">送信</button>
+      <!-- 確認画面へ進むボタン -->
+      <button type="button" class="btn" id="go-confirm">確認画面へ進む</button>
     </form>
   </div>
 
-  <script>
-    // 空室状況データ（一部サンプル）
+  <!-- 確認画面 (モーダル) -->
+  <div id="confirm-modal">
+    <div id="confirm-box">
+      <h2>予約内容の確認</h2>
+      <div class="confirm-field">
+        <span class="confirm-label">チェックイン日：</span>
+        <span id="confirm-checkin"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">チェックアウト日：</span>
+        <span id="confirm-checkout"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">部屋カテゴリー：</span>
+        <span id="confirm-room"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">氏名：</span>
+        <span id="confirm-name"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">電話番号：</span>
+        <span id="confirm-phone"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">メールアドレス：</span>
+        <span id="confirm-email"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">宿泊人数：</span>
+        <span id="confirm-guests"></span>
+      </div>
+
+      <!-- 予約確定ボタンとキャンセルボタン -->
+      <button id="confirm-submit" class="btn" style="background-color:#007bff;">予約を確定する</button>
+      <button id="confirm-cancel" class="btn" style="background-color:#dc3545;">修正する</button>
+    </div>
+  </div>
+
+  <!-- Firebase & Firestore -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    // あなたのFirebaseプロジェクト設定
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    /*---------------------------------------
+      1) カレンダー表示 (既存のまま)
+    ----------------------------------------*/
     const availabilityData = {
       "2025-02-01": { available: 0, price: null },
       "2025-02-02": { available: 3, price: 5000 },
@@ -255,14 +331,9 @@
 
     let currentMonth = 1; // 2月
     let currentYear = 2025;
-
-    // チェックイン・チェックアウト
     let checkInDate = null;
     let checkOutDate = null;
 
-    /**
-     * カレンダー描画
-     */
     function renderCalendar(year, month) {
       const calendar = document.getElementById("calendar");
       calendar.innerHTML = "";
@@ -280,7 +351,7 @@
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      // 月の最初の曜日まで空白セル
+      // 空白セル
       for (let i = 0; i < startDay; i++) {
         const emptyCell = document.createElement("div");
         emptyCell.classList.add("day-cell", "no-data");
@@ -292,21 +363,17 @@
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
-        // 空室状況の表示
         if (availabilityData[dateKey]) {
           const { available, price } = availabilityData[dateKey];
           if (available > 0) {
-            // ▼ 空室の日だけクリックを可能にする ▼
             dayCell.classList.add("available");
             dayCell.innerHTML = `
               <div>${day}</div>
               <div>空室: ${available}</div>
               <div class="price">¥${price}</div>
             `;
-            // ▼ 空室のみイベントを付与
             dayCell.addEventListener("click", () => {
               selectDate(dateKey);
-              // ★ ここではスクロールさせない（チェックアウト確定までは遷移しない）
             });
           } else {
             // 満室
@@ -317,12 +384,11 @@
             `;
           }
         } else {
-          // データがない日
+          // データなし
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
 
-        // チェックイン～チェックアウトの範囲内ならハイライト
         if (isInSelectedRange(dateKey)) {
           dayCell.classList.add("selected-range");
         }
@@ -331,22 +397,13 @@
       }
     }
 
-    /**
-     * 日付選択ロジック
-     */
     function selectDate(dateKey) {
-      // 両方選択済みなら、一度リセットして新しいチェックインにする
       if (checkInDate && checkOutDate) {
         checkInDate = dateKey;
         checkOutDate = null;
-      }
-      // チェックインが未選択なら
-      else if (!checkInDate) {
+      } else if (!checkInDate) {
         checkInDate = dateKey;
-      }
-      // チェックインのみ選択済みなら
-      else if (!checkOutDate) {
-        // チェックアウト日がチェックインより前の場合は入れ替え
+      } else if (!checkOutDate) {
         if (dateKey < checkInDate) {
           checkOutDate = checkInDate;
           checkInDate = dateKey;
@@ -354,18 +411,13 @@
           checkOutDate = dateKey;
         }
       }
-
       updateSelectedDates();
 
-      // ★ チェックアウト日が選択確定したらスクロールさせる
       if (checkInDate && checkOutDate) {
         document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
       }
     }
 
-    /**
-     * 指定日が選択範囲内(チェックイン～チェックアウト)かどうか
-     */
     function isInSelectedRange(dateKey) {
       if (checkInDate && checkOutDate) {
         return dateKey >= checkInDate && dateKey <= checkOutDate;
@@ -375,19 +427,12 @@
       return false;
     }
 
-    /**
-     * カレンダー再描画 + フォームに選択日付を反映
-     */
     function updateSelectedDates() {
-      // hiddenフィールドに反映
       document.getElementById("checkin-date").value = checkInDate || "";
       document.getElementById("checkout-date").value = checkOutDate || "";
-
-      // カレンダー再描画
       renderCalendar(currentYear, currentMonth);
     }
 
-    // 前の月ボタン
     document.getElementById("prev-month").addEventListener("click", () => {
       currentMonth--;
       if (currentMonth < 0) {
@@ -397,8 +442,6 @@
       document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
       renderCalendar(currentYear, currentMonth);
     });
-
-    // 次の月ボタン
     document.getElementById("next-month").addEventListener("click", () => {
       currentMonth++;
       if (currentMonth > 11) {
@@ -409,9 +452,100 @@
       renderCalendar(currentYear, currentMonth);
     });
 
-    // 初期表示
     document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
     renderCalendar(currentYear, currentMonth);
+
+
+    /*---------------------------------------
+      2) 確認画面へ遷移
+    ----------------------------------------*/
+    const goConfirmBtn = document.getElementById("go-confirm");
+    const confirmModal = document.getElementById("confirm-modal");
+    const confirmCheckin = document.getElementById("confirm-checkin");
+    const confirmCheckout = document.getElementById("confirm-checkout");
+    const confirmRoom = document.getElementById("confirm-room");
+    const confirmName = document.getElementById("confirm-name");
+    const confirmPhone = document.getElementById("confirm-phone");
+    const confirmEmail = document.getElementById("confirm-email");
+    const confirmGuests = document.getElementById("confirm-guests");
+
+    goConfirmBtn.addEventListener("click", () => {
+      // フォームの値を取得
+      const cIn = document.getElementById("checkin-date").value;
+      const cOut = document.getElementById("checkout-date").value;
+      const room = document.getElementById("room-category").value;
+      const name = document.getElementById("name").value;
+      const phone = document.getElementById("phone").value;
+      const email = document.getElementById("email").value;
+      const guests = document.getElementById("guests").value;
+
+      if (!cIn || !cOut || !room || !name || !phone || !email || !guests) {
+        alert("未入力の項目があります。");
+        return;
+      }
+
+      // 確認画面に反映
+      confirmCheckin.textContent = cIn;
+      confirmCheckout.textContent = cOut;
+      confirmRoom.textContent = room;
+      confirmName.textContent = name;
+      confirmPhone.textContent = phone;
+      confirmEmail.textContent = email;
+      confirmGuests.textContent = guests;
+
+      // 確認画面を表示
+      confirmModal.style.display = "flex";
+    });
+
+    /*---------------------------------------
+      3) 予約確定 or キャンセル
+    ----------------------------------------*/
+    const confirmSubmit = document.getElementById("confirm-submit");
+    const confirmCancel = document.getElementById("confirm-cancel");
+
+    confirmCancel.addEventListener("click", () => {
+      // 確認画面を閉じる（修正）
+      confirmModal.style.display = "none";
+    });
+
+    confirmSubmit.addEventListener("click", async () => {
+      // Firestoreに登録
+      try {
+        const cIn = document.getElementById("checkin-date").value;
+        const cOut = document.getElementById("checkout-date").value;
+        const room = document.getElementById("room-category").value;
+        const name = document.getElementById("name").value;
+        const phone = document.getElementById("phone").value;
+        const email = document.getElementById("email").value;
+        const guests = Number(document.getElementById("guests").value);
+
+        // reservationsコレクションに追加
+        const reservationsCol = collection(db, "reservations");
+        await addDoc(reservationsCol, {
+          checkInDate: cIn,
+          checkOutDate: cOut,
+          roomCategory: room,
+          name,
+          phone,
+          email,
+          guests,
+          createdAt: serverTimestamp()
+        });
+
+        alert("予約を確定しました。");
+        confirmModal.style.display = "none";
+
+        // フォームと日付をリセット
+        document.getElementById("reservation-form").reset();
+        checkInDate = null;
+        checkOutDate = null;
+        updateSelectedDates();
+      } catch (err) {
+        console.error("予約確定エラー:", err);
+        alert("予約確定に失敗しました: " + err.message);
+        // モーダル閉じないままでもOKです。必要なら閉じる処理を
+      }
+    });
   </script>
 </body>
 </html>
