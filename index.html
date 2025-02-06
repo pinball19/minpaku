@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>空室カレンダー（最新在庫反映）</title>
+  <title>空室カレンダー（チェックイン日・泊数連携）</title>
   <style>
     /* 全体のデザイン */
     body {
@@ -16,7 +16,7 @@
       align-items: flex-start;
       min-height: 100vh;
     }
-    /* カレンダー＆フォームをまとめるコンテナ */
+    /* カレンダー＆フォームコンテナ */
     #calendar-container {
       background: white;
       padding: 20px;
@@ -76,7 +76,7 @@
       justify-content: center;
       align-items: center;
       background-color: #f9f9f9;
-      cursor: default;
+      cursor: pointer;
       position: relative;
     }
     .day-cell.full {
@@ -86,19 +86,20 @@
     .day-cell.available {
       background-color: #e8fbe8;
       color: #28a745;
-      cursor: pointer;
     }
     .day-cell.no-data {
       background-color: #f9f9f9;
       color: #ccc;
+      cursor: default;
     }
     .price {
       font-size: 12px;
       font-weight: bold;
       margin-top: 5px;
     }
-    .day-cell.selected-range {
-      background-color: #ffd966 !important;
+    .day-cell.selected {
+      /* チェックイン日として選択されたセルのハイライト */
+      border: 2px solid #ff8c00;
     }
     /* 予約フォーム */
     form#reservation-form {
@@ -107,6 +108,7 @@
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      margin-top: 20px;
     }
     form#reservation-form h2 {
       margin-bottom: 20px;
@@ -204,9 +206,13 @@
     <!-- 予約フォーム -->
     <form id="reservation-form">
       <h2>ご予約情報</h2>
-      <!-- チェックイン・チェックアウト日を保持 -->
+      <!-- チェックイン日はカレンダーで選択 -->
       <input type="hidden" id="checkin-date" />
-      <input type="hidden" id="checkout-date" />
+      <!-- 泊数フィールドを追加（部屋カテゴリーの上に設置） -->
+      <div class="form-group">
+        <label for="nights">泊数：</label>
+        <input type="number" id="nights" min="1" placeholder="泊数を入力" required/>
+      </div>
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
         <select id="room-category" required>
@@ -252,7 +258,12 @@
       </div>
       <div class="confirm-field">
         <span class="confirm-label">チェックアウト日：</span>
+        <!-- チェックアウト日はチェックイン日＋泊数で自動計算 -->
         <span id="confirm-checkout"></span>
+      </div>
+      <div class="confirm-field">
+        <span class="confirm-label">泊数：</span>
+        <span id="confirm-nights"></span>
       </div>
       <div class="confirm-field">
         <span class="confirm-label">部屋カテゴリー：</span>
@@ -278,7 +289,6 @@
         <span class="confirm-label">宿泊人数：</span>
         <span id="confirm-guests"></span>
       </div>
-      <!-- 予約確定ボタンとキャンセルボタン -->
       <button id="confirm-submit" class="btn" style="background-color:#007bff;">予約を確定する</button>
       <button id="confirm-cancel" class="btn" style="background-color:#dc3545;">修正する</button>
     </div>
@@ -300,7 +310,7 @@
       onSnapshot
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // Firebase プロジェクト設定（各自置き換えてください）
+    // Firebase設定（各自置き換えてください）
     const firebaseConfig = {
       apiKey: "AIzaSyCnRbmcPezD4Osisss6XebmU15ukBqttQw",
       authDomain: "slack-bot-firebase-7991a.firebaseapp.com",
@@ -309,14 +319,12 @@
       messagingSenderId: "215585745043",
       appId: "1:215585745043:web:0c70ac99c5066b56cd4566"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
     /*===========================================
-     * お客様画面のカレンダー表示：Firestoreから最新在庫を取得して集計
-     * ここでは、rooms コレクションの全ドキュメントを onSnapshot で取得し、
-     * 対象の年月の各日について、全カテゴリーの available 合計と最低料金 (minPrice) を集計します。
+     * お客様画面のカレンダー表示：Firestoreのroomsから最新在庫を取得して集計
+     * 対象の年月の各日について、全カテゴリーの在庫合計と最低料金 (minPrice) を算出
      ===========================================*/
     let currentYear = 2025;
     let currentMonth = 1; // 0～11：ここでは2月
@@ -326,26 +334,21 @@
     const calendarEl = document.getElementById("calendar");
     const monthLabel = document.getElementById("current-month");
 
-    // Firestoreのroomsコレクションからデータを取得して集計する
-    // ※ 全ドキュメント取得→JavaScript側で対象年月をフィルタしています。
-    // 実運用ではクエリで日付範囲を絞るとよいでしょう。
+    // roomsコレクションからデータを取得
     const roomsCol = collection(db, "rooms");
     onSnapshot(roomsCol, (snapshot) => {
-      // 対象年月ごとに集計する前に calendarData を初期化
+      // 毎回対象年月分のみ集計
       calendarData = {};
-
       snapshot.forEach((docSnap) => {
         const d = docSnap.data();
         if (!d.date || typeof d.available !== "number") return;
-        // d.date は "YYYY-MM-DD" として保存されている前提
+        // d.dateは"YYYY-MM-DD"として保存されている前提
         const docDate = new Date(d.date);
         if (docDate.getFullYear() === currentYear && docDate.getMonth() === currentMonth) {
-          // すでに存在していれば合算、なければ初期化
           if (!calendarData[d.date]) {
             calendarData[d.date] = { totalAvailable: 0, minPrice: d.price };
           }
           calendarData[d.date].totalAvailable += d.available;
-          // 最低料金の更新
           if (d.price != null) {
             if (calendarData[d.date].minPrice == null || d.price < calendarData[d.date].minPrice) {
               calendarData[d.date].minPrice = d.price;
@@ -373,13 +376,13 @@
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      for (let i = 0; i < startDay; i++) {
+      for (let i=0; i<startDay; i++){
         const emptyCell = document.createElement("div");
-        emptyCell.classList.add("day-cell","no-data");
+        emptyCell.classList.add("day-cell", "no-data");
         calendarEl.appendChild(emptyCell);
       }
 
-      for (let day = 1; day <= daysInMonth; day++) {
+      for (let day=1; day<=daysInMonth; day++){
         const dateKey = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
@@ -404,13 +407,32 @@
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
-        // （必要に応じて、クリック時の処理などを追加可能）
+
+        // チェックイン日として選択されている場合はハイライト
+        if (day === new Date(checkInDate).getDate() && checkInDate) {
+          dayCell.classList.add("selected");
+        }
+
         calendarEl.appendChild(dayCell);
       }
     }
 
+    // 前/次ボタン
+    document.getElementById("prev-month").addEventListener("click", () => {
+      currentMonth--;
+      if (currentMonth < 0){ currentMonth = 11; currentYear--; }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth+1}月`;
+      renderCalendar(currentYear, currentMonth);
+    });
+    document.getElementById("next-month").addEventListener("click", () => {
+      currentMonth++;
+      if (currentMonth > 11){ currentMonth = 0; currentYear++; }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth+1}月`;
+      renderCalendar(currentYear, currentMonth);
+    });
+
     /*===========================================
-     * 予約確認画面への遷移＆予約確定処理
+     * 予約確認画面＆予約確定処理
      ===========================================*/
     const goConfirmBtn = document.getElementById("go-confirm");
     const confirmModal = document.getElementById("confirm-modal");
@@ -418,6 +440,7 @@
     const confirmCheckout = document.getElementById("confirm-checkout");
     const confirmRoom = document.getElementById("confirm-room");
     const confirmRoomCount = document.getElementById("confirm-roomcount");
+    const confirmNights = document.getElementById("confirm-nights");
     const confirmName = document.getElementById("confirm-name");
     const confirmPhone = document.getElementById("confirm-phone");
     const confirmEmail = document.getElementById("confirm-email");
@@ -425,32 +448,44 @@
 
     goConfirmBtn.addEventListener("click", () => {
       const cIn = document.getElementById("checkin-date").value;
-      const cOut = document.getElementById("checkout-date").value;
+      // チェックアウトは now では入力せず、泊数から自動計算するため hidden にしない
       const room = document.getElementById("room-category").value;
       const roomCount = document.getElementById("room-count").value;
+      const nights = document.getElementById("nights").value;
       const name = document.getElementById("name").value;
       const phone = document.getElementById("phone").value;
       const email = document.getElementById("email").value;
       const guests = document.getElementById("guests").value;
 
-      if (!cIn || !cOut || !room || !roomCount || !name || !phone || !email || !guests) {
+      if (!cIn || !room || !roomCount || !nights || !name || !phone || !email || !guests) {
         alert("未入力の項目があります。");
         return;
       }
+
+      // チェックアウト日は、チェックイン日 + 泊数 を計算
+      const checkInDateObj = new Date(cIn);
+      const nightsNum = Number(nights);
+      const checkOutDateObj = new Date(checkInDateObj);
+      checkOutDateObj.setDate(checkInDateObj.getDate() + nightsNum);
+      // フォーマット YYYY-MM-DD
+      const yyyy = checkOutDateObj.getFullYear();
+      const mm = String(checkOutDateObj.getMonth()+1).padStart(2,"0");
+      const dd = String(checkOutDateObj.getDate()).padStart(2,"0");
+      const computedCheckout = `${yyyy}-${mm}-${dd}`;
+
       confirmCheckin.textContent = cIn;
-      confirmCheckout.textContent = cOut;
+      confirmCheckout.textContent = computedCheckout;
       confirmRoom.textContent = room;
       confirmRoomCount.textContent = roomCount;
+      confirmNights.textContent = nights;
       confirmName.textContent = name;
       confirmPhone.textContent = phone;
       confirmEmail.textContent = email;
       confirmGuests.textContent = guests;
+
       confirmModal.style.display = "flex";
     });
 
-    /*===========================================
-     * 予約確定時の処理（roomsの在庫を減らす + customersにupsert + reservationsに追加）
-     ===========================================*/
     const confirmSubmit = document.getElementById("confirm-submit");
     const confirmCancel = document.getElementById("confirm-cancel");
 
@@ -461,13 +496,22 @@
     confirmSubmit.addEventListener("click", async () => {
       try {
         const cIn = document.getElementById("checkin-date").value;
-        const cOut = document.getElementById("checkout-date").value;
         const room = document.getElementById("room-category").value;
         const roomCount = Number(document.getElementById("room-count").value);
+        const nights = Number(document.getElementById("nights").value);
         const name = document.getElementById("name").value;
         const phone = document.getElementById("phone").value;
         const email = document.getElementById("email").value;
         const guests = Number(document.getElementById("guests").value);
+
+        // 計算したチェックアウト日
+        const checkInDateObj = new Date(cIn);
+        const checkOutDateObj = new Date(checkInDateObj);
+        checkOutDateObj.setDate(checkInDateObj.getDate() + nights);
+        const yyyy = checkOutDateObj.getFullYear();
+        const mm = String(checkOutDateObj.getMonth()+1).padStart(2,"0");
+        const dd = String(checkOutDateObj.getDate()).padStart(2,"0");
+        const computedCheckout = `${yyyy}-${mm}-${dd}`;
 
         // 1) 在庫更新と予約追加をトランザクションで実行
         const docId = `${cIn}_${room}`;  // 例: "2025-02-02_standard"
@@ -488,9 +532,10 @@
           });
           await addDoc(reservationsCol, {
             checkInDate: cIn,
-            checkOutDate: cOut,
+            checkOutDate: computedCheckout,
             roomCategory: room,
             roomCount,
+            nights,  // 泊数
             name,
             phone,
             email,
@@ -500,15 +545,15 @@
           });
         });
 
-        // 2) customers への upsert（メールをキーに）
+        // 2) customersへの upsert（メールをキーに）
         await upsertCustomer(name, phone, email);
 
-        alert("予約を確定しました。（在庫と顧客情報も自動更新）");
+        alert("予約を確定しました。（在庫・顧客情報も自動更新）");
         confirmModal.style.display = "none";
         document.getElementById("reservation-form").reset();
+        // リセット後、カレンダーのチェックイン日をクリア
         checkInDate = null;
-        checkOutDate = null;
-        // 最新在庫情報は onSnapshot により自動で反映されます。
+        updateSelectedDates();
 
       } catch (err) {
         console.error("予約確定時エラー:", err);
@@ -517,7 +562,7 @@
     });
 
     /*===========================================
-     * customers への upsert
+     * customersへの upsert
      * （メールをキーに検索し、あれば visitCount+1、なければ新規追加）
      ===========================================*/
     async function upsertCustomer(name, phone, email) {
