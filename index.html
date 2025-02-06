@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在庫カレンダー</title>
+  <style>
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .day { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    .day.out-of-stock { background-color: #f8d7da; }
+    .day.available { background-color: #d4edda; }
+  </style>
+</head>
+<body>
+  <h1>在庫カレンダー</h1>
+  <div class="calendar" id="calendar"></div>
+  <script src="calendar.js"></script>
+</body>
+</html>
