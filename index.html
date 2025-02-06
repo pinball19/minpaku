@@ -5,18 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>空室カレンダー</title>
   <style>
-    /* CSSスタイル */
+    /* 全体のデザイン */
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #f7faff, #d8ecf3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
 
     #calendar-container {
-      display: inline-block;
-      text-align: left;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 800px;
+      text-align: center;
     }
 
+    /* 見出し */
+    h1 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    /* 月切り替えボタン */
     .month-header {
       display: flex;
       justify-content: space-between;
@@ -24,10 +42,26 @@
       margin-bottom: 20px;
     }
 
+    button {
+      padding: 10px 20px;
+      font-size: 14px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    /* カレンダー */
     #calendar {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
+      gap: 10px;
     }
 
     .day-cell {
@@ -35,13 +69,16 @@
       padding: 10px;
       border-radius: 5px;
       text-align: center;
-      font-size: 12px;
+      font-size: 14px;
+      background-color: #f9f9f9;
     }
 
     .day-header {
       font-weight: bold;
-      background-color: #f1f1f1;
-      padding: 5px;
+      background-color: #e9ecef;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
     }
 
     .day-cell.full {
@@ -50,25 +87,25 @@
     }
 
     .day-cell.available {
-      background-color: #eaffea;
+      background-color: #e8fbe8;
       color: #28a745;
     }
 
     .day-cell.no-data {
+      color: #ccc;
       background-color: #f9f9f9;
-      color: #999;
     }
 
     .price {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: bold;
       margin-top: 5px;
     }
   </style>
 </head>
 <body>
-  <h1>空室カレンダー</h1>
   <div id="calendar-container">
+    <h1>空室カレンダー</h1>
     <div class="month-header">
       <button id="prev-month">前の月</button>
       <span id="current-month">2025年2月</span>
@@ -80,7 +117,7 @@
   </div>
 
   <script>
-    // JavaScript
+    // JavaScript（変更なし）
     const availabilityData = {
       "2025-02-01": { available: 0, price: null },
       "2025-02-02": { available: 3, price: 5000 },
