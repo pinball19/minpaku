@@ -5,138 +5,304 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>空室カレンダー</title>
   <style>
-    /* CSSコード */
+    /* 全体のデザイン */
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
+      background: linear-gradient(to bottom, #f7faff, #d8ecf3);
     }
-    h1, h2 {
-      text-align: center;
-      color: #333;
-    }
-    #calendar, #room-selection, #reservation-form {
-      margin: 20px auto;
+
+    /* カレンダーを画面中央に */
+    #main-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
       padding: 20px;
-      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    #calendar-container {
+      background: white;
+      padding: 20px;
       border-radius: 10px;
-      max-width: 700px;
-      background-color: #f9f9f9;
-    }
-    #calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
-      justify-items: center;
-      align-items: center;
-    }
-    .calendar-cell {
-      display: inline-block;
-      width: 80px;
-      height: 80px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 800px;
       text-align: center;
-      line-height: 1.5;
-      border-radius: 5px;
-      cursor: pointer;
-      padding: 5px;
-      font-size: 14px;
     }
-    .calendar-cell.available {
-      background-color: #d4f5d4;
+
+    /* 見出し */
+    h1 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 20px;
     }
-    .calendar-cell.full {
-      background-color: #f5d4d4;
-      cursor: not-allowed;
+
+    /* 月切り替えボタン */
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
-    button, input[type="submit"] {
-      margin: 10px auto;
+
+    button {
       padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
+      font-size: 14px;
       border: none;
       border-radius: 5px;
+      background-color: #007bff;
+      color: white;
       cursor: pointer;
-      display: block;
+      transition: background-color 0.3s;
     }
+
     button:hover {
       background-color: #0056b3;
     }
-    input[type="text"], input[type="tel"], input[type="email"], input[type="number"] {
-      width: calc(100% - 20px);
+
+    /* カレンダー */
+    #calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+    }
+
+    .day-cell {
+      border: 1px solid #ccc;
       padding: 10px;
-      margin: 10px 0;
+      border-radius: 5px;
+      text-align: center;
+      font-size: 14px;
+      background-color: #f9f9f9;
+      cursor: pointer; /* クリックできるように */
+    }
+
+    .day-cell.full {
+      background-color: #ffeaea;
+      color: #d9534f;
+      cursor: pointer; /* 満室でもフォームに進む場合はクリック可能に */
+    }
+
+    .day-cell.available {
+      background-color: #e8fbe8;
+      color: #28a745;
+      cursor: pointer;
+    }
+
+    .day-cell.no-data {
+      color: #ccc;
+      background-color: #f9f9f9;
+      cursor: pointer;
+    }
+
+    .day-header {
+      font-weight: bold;
+      background-color: #e9ecef;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      cursor: default;
+    }
+
+    .price {
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+
+    /* 予約フォーム */
+    #reservation-form {
+      background: white;
+      margin-top: 40px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 800px;
+    }
+
+    #reservation-form h2 {
+      margin-bottom: 20px;
+      font-size: 20px;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: inline-block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .form-group input, 
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 5px;
     }
-    input[type="submit"]:hover {
-      background-color: #218838;
-    }
+
   </style>
 </head>
 <body>
-  <div id="calendar">
-    <h1>空室カレンダー</h1>
-    <div id="calendar-grid"></div>
+  <div id="main-container">
+    <div id="calendar-container">
+      <h1>空室カレンダー</h1>
+      <div class="month-header">
+        <button id="prev-month">前の月</button>
+        <span id="current-month">2025年2月</span>
+        <button id="next-month">次の月</button>
+      </div>
+      <div id="calendar">
+        <!-- カレンダー日付がここに挿入されます -->
+      </div>
+    </div>
   </div>
 
-  <div id="room-selection" style="display: none;">
-    <h2>部屋カテゴリーを選択してください</h2>
-    <button data-room="シングル">シングル</button>
-    <button data-room="ツイン">ツイン</button>
-    <button data-room="スイート">スイート</button>
-  </div>
-
-  <div id="reservation-form" style="display: none;">
-    <h2>予約情報を入力してください</h2>
-    <form id="reservation">
-      <label for="name">氏名:</label>
-      <input type="text" id="name" name="name" required>
-      <label for="phone">電話番号:</label>
-      <input type="tel" id="phone" name="phone" required>
-      <label for="email">メールアドレス:</label>
-      <input type="email" id="email" name="email" required>
-      <label for="guests">宿泊人数:</label>
-      <input type="number" id="guests" name="guests" min="1" required>
-      <input type="submit" value="予約を確定する">
-    </form>
+  <!-- 予約フォーム（ページ下部） -->
+  <div id="reservation-form">
+    <h2>ご予約情報</h2>
+    <div class="form-group">
+      <label for="room-category">部屋カテゴリー：</label>
+      <select id="room-category" name="room-category">
+        <option value="">選択してください</option>
+        <option value="standard">スタンダード</option>
+        <option value="deluxe">デラックス</option>
+        <option value="suite">スイート</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="name">氏名：</label>
+      <input type="text" id="name" name="name" placeholder="例）山田 太郎">
+    </div>
+    <div class="form-group">
+      <label for="phone">電話番号：</label>
+      <input type="text" id="phone" name="phone" placeholder="例）090-1234-5678">
+    </div>
+    <div class="form-group">
+      <label for="email">メールアドレス：</label>
+      <input type="email" id="email" name="email" placeholder="例）example@example.com">
+    </div>
+    <div class="form-group">
+      <label for="guests">宿泊人数：</label>
+      <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力">
+    </div>
+    <!-- 必要に応じて送信ボタン等を追加 -->
   </div>
 
   <script>
-    // JavaScriptコード
-    const calendarData = [
-      { date: "2025-02-10", available: 5, price: 5000 },
-      { date: "2025-02-11", available: 3, price: 4500 },
-      { date: "2025-02-12", available: 0, price: 0 },
-    ];
+    // 空室状況データ
+    const availabilityData = {
+      "2025-02-01": { available: 0, price: null },
+      "2025-02-02": { available: 3, price: 5000 },
+      "2025-02-03": { available: 5, price: 4500 },
+      "2025-02-08": { available: 0, price: null },
+      "2025-02-11": { available: 2, price: 5600 },
+      "2025-03-01": { available: 0, price: null },
+      "2025-03-05": { available: 2, price: 6000 },
+    };
 
-    const calendarGrid = document.getElementById("calendar-grid");
-    const roomSelection = document.getElementById("room-selection");
-    const reservationForm = document.getElementById("reservation-form");
+    let currentMonth = 1; // 2月 (JavaScriptの月は0-index)
+    let currentYear = 2025;
 
-    // カレンダーの初期化
-    calendarData.forEach(day => {
-      const cell = document.createElement("div");
-      cell.className = "calendar-cell";
-      cell.classList.add(day.available > 0 ? "available" : "full");
-      cell.innerHTML = `
-        ${day.date.split("-")[2]}<br>
-        ${day.available > 0 ? `空室: ${day.available}<br>¥${day.price}` : "満室"}
-      `;
-      if (day.available > 0) {
-        cell.addEventListener("click", () => {
-          roomSelection.style.display = "block";
-          reservationForm.style.display = "none";
+    // カレンダーを描画する関数
+    function renderCalendar(year, month) {
+      const calendar = document.getElementById("calendar");
+      calendar.innerHTML = "";
+
+      const daysInWeek = ["日", "月", "火", "水", "木", "金", "土"];
+      daysInWeek.forEach(day => {
+        const headerCell = document.createElement("div");
+        headerCell.classList.add("day-header");
+        headerCell.textContent = day;
+        calendar.appendChild(headerCell);
+      });
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startDay = firstDay.getDay();
+
+      // 月の最初の曜日まで空白セルを追加
+      for (let i = 0; i < startDay; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.classList.add("day-cell", "no-data");
+        calendar.appendChild(emptyCell);
+      }
+
+      // 各日付セルを追加
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const dayCell = document.createElement("div");
+        dayCell.classList.add("day-cell");
+
+        if (availabilityData[dateKey]) {
+          const { available, price } = availabilityData[dateKey];
+          if (available > 0) {
+            dayCell.classList.add("available");
+            dayCell.innerHTML = `
+              <div>${day}</div>
+              <div>空室: ${available}</div>
+              <div class="price">¥${price}</div>
+            `;
+          } else {
+            dayCell.classList.add("full");
+            dayCell.innerHTML = `
+              <div>${day}</div>
+              <div>満室</div>
+            `;
+          }
+        } else {
+          dayCell.classList.add("no-data");
+          dayCell.textContent = day;
+        }
+
+        // クリックで予約フォームへスクロール
+        dayCell.addEventListener("click", () => {
+          document.getElementById("reservation-form").scrollIntoView({
+            behavior: "smooth"
+          });
         });
+
+        calendar.appendChild(dayCell);
       }
-      calendarGrid.appendChild(cell);
+    }
+
+    // 前の月ボタン
+    document.getElementById("prev-month").addEventListener("click", () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
+      renderCalendar(currentYear, currentMonth);
     });
 
-    // 部屋選択後に予約フォームを表示
-    roomSelection.addEventListener("click", (event) => {
-      if (event.target.tagName === "BUTTON") {
-        reservationForm.style.display = "block";
+    // 次の月ボタン
+    document.getElementById("next-month").addEventListener("click", () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
       }
+      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
+      renderCalendar(currentYear, currentMonth);
     });
+
+    // 初期表示
+    document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
+    renderCalendar(currentYear, currentMonth);
   </script>
 </body>
 </html>
