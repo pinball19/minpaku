@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>空室カレンダー（チェックイン日・泊数連携）</title>
+  <title>空室カレンダー（チェックイン日・泊数連携＆最新在庫反映）</title>
   <style>
     /* 全体のデザイン */
     body {
@@ -16,7 +16,7 @@
       align-items: flex-start;
       min-height: 100vh;
     }
-    /* カレンダー＆フォームコンテナ */
+    /* カレンダー＆フォームをまとめるコンテナ */
     #calendar-container {
       background: white;
       padding: 20px;
@@ -174,7 +174,7 @@
       font-weight: bold;
       margin-right: 5px;
     }
-    /* スマホ */
+    /* スマホ用調整 */
     @media (max-width: 600px) {
       #calendar {
         gap: 5px;
@@ -206,9 +206,9 @@
     <!-- 予約フォーム -->
     <form id="reservation-form">
       <h2>ご予約情報</h2>
-      <!-- チェックイン日はカレンダーで選択 -->
+      <!-- チェックイン日はカレンダーで選択（hidden） -->
       <input type="hidden" id="checkin-date" />
-      <!-- 泊数フィールドを部屋カテゴリーの上に追加 -->
+      <!-- 泊数フィールド（チェックアウト日は自動計算するため入力不要） -->
       <div class="form-group">
         <label for="nights">泊数：</label>
         <input type="number" id="nights" min="1" placeholder="泊数を入力" required/>
@@ -258,7 +258,7 @@
       </div>
       <div class="confirm-field">
         <span class="confirm-label">チェックアウト日：</span>
-        <!-- チェックアウト日はチェックイン日＋泊数で自動計算 -->
+        <!-- チェックアウト日は、チェックイン日＋泊数で自動計算 -->
         <span id="confirm-checkout"></span>
       </div>
       <div class="confirm-field">
@@ -310,7 +310,7 @@
       onSnapshot
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // Firebase 設定（各自置き換えてください）
+    // Firebase プロジェクト設定（各自置き換えてください）
     const firebaseConfig = {
       apiKey: "AIzaSyCnRbmcPezD4Osisss6XebmU15ukBqttQw",
       authDomain: "slack-bot-firebase-7991a.firebaseapp.com",
@@ -323,8 +323,15 @@
     const db = getFirestore(app);
 
     /*===========================================
-     * お客様画面のカレンダー表示：Firestoreのroomsから最新在庫を取得して集計
-     * 対象の年月の各日について、全カテゴリーの在庫合計と最低料金 (minPrice) を算出
+     * グローバル変数の定義
+     * チェックイン日を保持するためのグローバル変数
+     ===========================================*/
+    let checkInDate = null;
+
+    /*===========================================
+     * お客様画面のカレンダー表示
+     * Firestore の rooms コレクションから最新の在庫データを集計
+     * 対象の年月の各日について、全カテゴリーの在庫合計(totalAvailable)と最低料金(minPrice)を算出
      ===========================================*/
     let currentYear = 2025;
     let currentMonth = 1; // 0～11：ここでは2月
@@ -336,7 +343,6 @@
 
     const roomsCol = collection(db, "rooms");
     onSnapshot(roomsCol, (snapshot) => {
-      // 対象年月分のみ集計するために calendarData を初期化
       calendarData = {};
       snapshot.forEach((docSnap) => {
         const d = docSnap.data();
@@ -375,13 +381,13 @@
       const daysInMonth = lastDay.getDate();
       const startDay = firstDay.getDay();
 
-      for (let i=0; i<startDay; i++){
+      for (let i = 0; i < startDay; i++){
         const emptyCell = document.createElement("div");
-        emptyCell.classList.add("day-cell", "no-data");
+        emptyCell.classList.add("day-cell","no-data");
         calendarEl.appendChild(emptyCell);
       }
 
-      for (let day = 1; day<=daysInMonth; day++){
+      for (let day = 1; day <= daysInMonth; day++){
         const dateKey = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
@@ -407,23 +413,34 @@
           dayCell.textContent = day;
         }
         // チェックイン日として選択されている場合はハイライト
-        if (checkInDate && new Date(checkInDate).getDate() === day) {
+        if (checkInDate && new Date(checkInDate).getDate() === day &&
+            new Date(checkInDate).getMonth() === month &&
+            new Date(checkInDate).getFullYear() === year) {
           dayCell.classList.add("selected");
         }
+        // お客様画面ではチェックイン日のみを選択するので、セルクリック時にチェックイン日を設定
+        dayCell.addEventListener("click", () => {
+          checkInDate = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+          updateSelectedDates();
+        });
         calendarEl.appendChild(dayCell);
       }
     }
 
-    // 前/次ボタン
+    function updateSelectedDates() {
+      document.getElementById("checkin-date").value = checkInDate || "";
+      renderCalendar(currentYear, currentMonth);
+    }
+
     document.getElementById("prev-month").addEventListener("click", () => {
       currentMonth--;
-      if (currentMonth < 0){ currentMonth = 11; currentYear--; }
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
       document.getElementById("current-month").textContent = `${currentYear}年${currentMonth+1}月`;
       renderCalendar(currentYear, currentMonth);
     });
     document.getElementById("next-month").addEventListener("click", () => {
       currentMonth++;
-      if (currentMonth > 11){ currentMonth = 0; currentYear++; }
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
       document.getElementById("current-month").textContent = `${currentYear}年${currentMonth+1}月`;
       renderCalendar(currentYear, currentMonth);
     });
@@ -460,14 +477,14 @@
         return;
       }
 
-      // チェックアウト日を、チェックイン日 + 泊数で計算
+      // チェックアウトはチェックイン日＋泊数で計算
       const checkInDateObj = new Date(cIn);
       const nightsNum = Number(nights);
       const checkOutDateObj = new Date(checkInDateObj);
       checkOutDateObj.setDate(checkInDateObj.getDate() + nightsNum);
       const yyyy = checkOutDateObj.getFullYear();
-      const mm = String(checkOutDateObj.getMonth() + 1).padStart(2, "0");
-      const dd = String(checkOutDateObj.getDate()).padStart(2, "0");
+      const mm = String(checkOutDateObj.getMonth() + 1).padStart(2,"0");
+      const dd = String(checkOutDateObj.getDate()).padStart(2,"0");
       const computedCheckout = `${yyyy}-${mm}-${dd}`;
 
       confirmCheckin.textContent = cIn;
@@ -506,8 +523,8 @@
         const checkOutDateObj = new Date(checkInDateObj);
         checkOutDateObj.setDate(checkInDateObj.getDate() + nights);
         const yyyy = checkOutDateObj.getFullYear();
-        const mm = String(checkOutDateObj.getMonth() + 1).padStart(2, "0");
-        const dd = String(checkOutDateObj.getDate()).padStart(2, "0");
+        const mm = String(checkOutDateObj.getMonth() + 1).padStart(2,"0");
+        const dd = String(checkOutDateObj.getDate()).padStart(2,"0");
         const computedCheckout = `${yyyy}-${mm}-${dd}`;
 
         // 在庫更新と予約追加をトランザクションで実行
@@ -532,7 +549,7 @@
             checkOutDate: computedCheckout,
             roomCategory: room,
             roomCount,
-            nights,  // 泊数
+            nights,
             name,
             phone,
             email,
