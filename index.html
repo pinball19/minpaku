@@ -1,16 +1,117 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>空室カレンダー</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>空室カレンダー</title>
+  <style>
+    /* CSSスタイル */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    #calendar-container {
+      margin: 20px;
+    }
+
+    #calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+    }
+
+    .date-cell {
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+    }
+
+    .date-cell.full {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .date-cell.available {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .date-info {
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <h1>空室カレンダー</h1>
+  <h1>空室カレンダー</h1>
+  <div id="calendar-container">
+    <button id="prev-month">前の月</button>
+    <button id="next-month">次の月</button>
     <div id="calendar"></div>
+  </div>
+  <script>
+    // JavaScript
+    const availabilityData = {
+      "2025-02-01": { available: 0, price: null },
+      "2025-02-02": { available: 3, price: 5000 },
+      "2025-02-03": { available: 5, price: 4500 },
+      "2025-03-01": { available: 0, price: null },
+      "2025-03-05": { available: 2, price: 6000 },
+      // 他の日付のデータを追加
+    };
 
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <script src="script.js"></script>
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+
+    function renderCalendar(year, month) {
+      const calendar = document.getElementById("calendar");
+      calendar.innerHTML = "";
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+        const cell = document.createElement("div");
+        cell.classList.add("date-cell");
+
+        const dateInfo = availabilityData[dateKey];
+        if (dateInfo) {
+          if (dateInfo.available > 0) {
+            cell.classList.add("available");
+            cell.innerHTML = `<div>${dateKey}</div><div class="date-info">空室: ${dateInfo.available}<br>¥${dateInfo.price}</div>`;
+          } else {
+            cell.classList.add("full");
+            cell.innerHTML = `<div>${dateKey}</div><div class="date-info">満室</div>`;
+          }
+        } else {
+          cell.innerHTML = `<div>${dateKey}</div><div class="date-info">データなし</div>`;
+        }
+        calendar.appendChild(cell);
+      }
+    }
+
+    document.getElementById("prev-month").addEventListener("click", () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      renderCalendar(currentYear, currentMonth);
+    });
+
+    document.getElementById("next-month").addEventListener("click", () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      renderCalendar(currentYear, currentMonth);
+    });
+
+    renderCalendar(currentYear, currentMonth);
+  </script>
 </body>
 </html>
