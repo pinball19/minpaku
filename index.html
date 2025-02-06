@@ -12,11 +12,13 @@
       padding: 0;
       background: linear-gradient(to bottom, #f7faff, #d8ecf3);
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      flex-direction: column; /* 縦に積み重ねる */
+      align-items: center;    /* 中央寄せ */
       min-height: 100vh;
     }
-    #calendar-container {
+
+    /* カレンダー＆フォームをまとめるコンテナ */
+    .content-container {
       background: white;
       padding: 20px;
       border-radius: 10px;
@@ -25,12 +27,17 @@
       max-width: 800px;
       text-align: center;
       margin-top: 20px;
+      margin-bottom: 20px; /* 下との余白 */
     }
+
+    /* タイトル */
     h1 {
       font-size: 24px;
       color: #333;
       margin-bottom: 20px;
     }
+
+    /* 月切り替えボタン */
     .month-header {
       display: flex;
       justify-content: space-between;
@@ -160,22 +167,12 @@
         font-size: 12px;
         padding: 5px;
       }
-      #calendar-container {
+      .content-container {
         padding: 10px;
       }
     }
 
     /* 予約台帳・在庫一覧 */
-    #reservation-ledger,
-    #room-inventory {
-      background: white;
-      margin-top: 30px;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      width: 90%;
-      max-width: 800px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -192,8 +189,9 @@
   </style>
 </head>
 <body>
-  <!-- カレンダー・予約フォーム -->
-  <div id="calendar-container">
+
+  <!-- 1) カレンダー -->
+  <div class="content-container" id="calendar-container">
     <h1>空室カレンダー</h1>
     <div class="month-header">
       <button id="prev-month">前の月</button>
@@ -201,15 +199,18 @@
       <button id="next-month">次の月</button>
     </div>
     <div id="calendar"></div>
+  </div>
 
+  <!-- 2) 予約フォーム -->
+  <div class="content-container">
     <form id="reservation-form">
       <h2>ご予約情報</h2>
-      <input type="hidden" id="checkin-date" name="checkin-date" />
-      <input type="hidden" id="checkout-date" name="checkout-date" />
+      <input type="hidden" id="checkin-date" />
+      <input type="hidden" id="checkout-date" />
 
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
-        <select id="room-category" name="room-category" required>
+        <select id="room-category" required>
           <option value="">選択してください</option>
           <option value="standard">スタンダード</option>
           <option value="deluxe">デラックス</option>
@@ -218,27 +219,27 @@
       </div>
       <div class="form-group">
         <label for="name">氏名：</label>
-        <input type="text" id="name" name="name" placeholder="例）山田 太郎" required/>
+        <input type="text" id="name" placeholder="例）山田 太郎" required/>
       </div>
       <div class="form-group">
         <label for="phone">電話番号：</label>
-        <input type="tel" id="phone" name="phone" placeholder="例）090-1234-5678" required/>
+        <input type="tel" id="phone" placeholder="例）090-1234-5678" required/>
       </div>
       <div class="form-group">
         <label for="email">メールアドレス：</label>
-        <input type="email" id="email" name="email" placeholder="例）example@example.com" required/>
+        <input type="email" id="email" placeholder="例）example@example.com" required/>
       </div>
       <div class="form-group">
         <label for="guests">宿泊人数：</label>
-        <input type="number" id="guests" name="guests" min="1" placeholder="人数を入力" required/>
+        <input type="number" id="guests" min="1" placeholder="人数を入力" required/>
       </div>
 
       <button type="submit" id="submit-btn">送信</button>
     </form>
   </div>
 
-  <!-- 予約台帳 -->
-  <div id="reservation-ledger">
+  <!-- 3) 予約台帳 -->
+  <div class="content-container" id="reservation-ledger">
     <h2>予約台帳</h2>
     <table>
       <thead>
@@ -256,8 +257,8 @@
     </table>
   </div>
 
-  <!-- 部屋在庫一覧 -->
-  <div id="room-inventory">
+  <!-- 4) 部屋在庫一覧 -->
+  <div class="content-container" id="room-inventory">
     <h2>部屋在庫一覧</h2>
     <table>
       <thead>
@@ -272,319 +273,24 @@
     </table>
   </div>
 
-  <!-- Firebase SDK (Modular)をCDNから読み込み (バージョンは適宜修正) -->
+  <!-- Firebase・Firestore を含むスクリプト(省略可) -->
   <script type="module">
+    /****************************************************
+     * ここにJavaScript(Firestore連携・カレンダー描画)
+     * の処理を記載
+     ****************************************************/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import {
       getFirestore,
-      doc,
-      collection,
-      onSnapshot,
-      runTransaction,
-      serverTimestamp,
-      addDoc,
-      query,
-      orderBy
+      // ... runTransaction, etc.
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // ▼ あなたのFirebaseプロジェクト設定を貼り付け
-    const firebaseConfig = {
-      apiKey: "AIzaSyCnRbmcPezD4Osisss6XebmU15ukBqttQw",
-      authDomain: "slack-bot-firebase-7991a.firebaseapp.com",
-      projectId: "slack-bot-firebase-7991a",
-      storageBucket: "slack-bot-firebase-7991a.firebasestorage.app",
-      messagingSenderId: "215585745043",
-      appId: "1:215585745043:web:0c70ac99c5066b56cd4566"
-    };
+    // あなたのFirebase設定・連携処理・カレンダー処理・
+    // 予約フォーム送信処理・予約台帳/在庫一覧描画など
+    // これまでのコードをそのまま入れてください。
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    /******************************************************
-     * カレンダー表示用のデータ: Firestoreから取得
-     ******************************************************/
-    let currentMonth = 1; // 2月
-    let currentYear = 2025;
-
-    // カレンダー描画に使う: { "YYYY-MM-DD": { totalAvailable: 0, minPrice: null } }
-    let calendarData = {};
-
-    // チェックイン・チェックアウト
-    let checkInDate = null;
-    let checkOutDate = null;
-
-    // roomsコレクションを監視し、dateごとに集計
-    const roomsRef = collection(db, "rooms");
-    onSnapshot(roomsRef, (snapshot) => {
-      // calendarData を毎回作り直す
-      calendarData = {};
-
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        // data.date: "2025-02-02"
-        // data.available: 3, data.price: 5000, ...
-        const dateKey = data.date;
-
-        if (!calendarData[dateKey]) {
-          // 初期値
-          calendarData[dateKey] = {
-            totalAvailable: 0,
-            minPrice: null
-          };
-        }
-
-        // 各カテゴリーの available を合計し、minPrice を計算
-        const current = calendarData[dateKey];
-        current.totalAvailable += data.available;
-        if (data.price !== null) {
-          if (current.minPrice === null || data.price < current.minPrice) {
-            current.minPrice = data.price;
-          }
-        }
-      });
-
-      // カレンダー再描画
-      renderCalendar(currentYear, currentMonth);
-    });
-
-    /******************************************************
-     * カレンダー描画
-     ******************************************************/
-    function renderCalendar(year, month) {
-      const calendar = document.getElementById("calendar");
-      calendar.innerHTML = "";
-
-      const daysInWeek = ["日", "月", "火", "水", "木", "金", "土"];
-      daysInWeek.forEach(day => {
-        const headerCell = document.createElement("div");
-        headerCell.classList.add("day-header");
-        headerCell.textContent = day;
-        calendar.appendChild(headerCell);
-      });
-
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const daysInMonth = lastDay.getDate();
-      const startDay = firstDay.getDay();
-
-      // 月の最初の曜日まで空セル
-      for (let i = 0; i < startDay; i++) {
-        const emptyCell = document.createElement("div");
-        emptyCell.classList.add("day-cell", "no-data");
-        calendar.appendChild(emptyCell);
-      }
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-        const dayCell = document.createElement("div");
-        dayCell.classList.add("day-cell");
-
-        // Firestore からの集計データ (calendarData) をもとに表示
-        const dayInfo = calendarData[dateKey];
-        if (dayInfo && dayInfo.totalAvailable > 0) {
-          // 空室あり
-          dayCell.classList.add("available");
-          dayCell.innerHTML = `
-            <div>${day}</div>
-            <div>空室: ${dayInfo.totalAvailable}</div>
-            <div class="price">¥${dayInfo.minPrice ?? "???"}</div>
-          `;
-          dayCell.addEventListener("click", () => {
-            selectDate(dateKey);
-          });
-        } else if (dayInfo && dayInfo.totalAvailable === 0) {
-          // 満室
-          dayCell.classList.add("full");
-          dayCell.innerHTML = `
-            <div>${day}</div>
-            <div>満室</div>
-          `;
-        } else {
-          // データなし or 未登録
-          dayCell.classList.add("no-data");
-          dayCell.textContent = day;
-        }
-
-        // チェックイン～チェックアウトの範囲内ならハイライト
-        if (isInSelectedRange(dateKey)) {
-          dayCell.classList.add("selected-range");
-        }
-
-        calendar.appendChild(dayCell);
-      }
-    }
-
-    function selectDate(dateKey) {
-      if (checkInDate && checkOutDate) {
-        // リセットして新しいチェックインに
-        checkInDate = dateKey;
-        checkOutDate = null;
-      } else if (!checkInDate) {
-        checkInDate = dateKey;
-      } else if (!checkOutDate) {
-        if (dateKey < checkInDate) {
-          checkOutDate = checkInDate;
-          checkInDate = dateKey;
-        } else {
-          checkOutDate = dateKey;
-        }
-      }
-      updateSelectedDates();
-      if (checkInDate && checkOutDate) {
-        document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
-      }
-    }
-
-    function isInSelectedRange(dateKey) {
-      if (checkInDate && checkOutDate) {
-        return dateKey >= checkInDate && dateKey <= checkOutDate;
-      } else if (checkInDate && !checkOutDate) {
-        return dateKey === checkInDate;
-      }
-      return false;
-    }
-
-    function updateSelectedDates() {
-      document.getElementById("checkin-date").value = checkInDate || "";
-      document.getElementById("checkout-date").value = checkOutDate || "";
-      renderCalendar(currentYear, currentMonth);
-    }
-
-    document.getElementById("prev-month").addEventListener("click", () => {
-      currentMonth--;
-      if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-      }
-      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
-      renderCalendar(currentYear, currentMonth);
-    });
-    document.getElementById("next-month").addEventListener("click", () => {
-      currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
-      document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
-      renderCalendar(currentYear, currentMonth);
-    });
-    // 初期表示
-    document.getElementById("current-month").textContent = `${currentYear}年${currentMonth + 1}月`;
-    renderCalendar(currentYear, currentMonth);
-
-    /******************************************************
-     * 予約フォーム送信時 → rooms で在庫を減らし、reservations へ登録
-     ******************************************************/
-    const reservationForm = document.getElementById('reservation-form');
-    reservationForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const checkinDate = document.getElementById('checkin-date').value;
-      const checkoutDate = document.getElementById('checkout-date').value;
-      const roomCategory = document.getElementById('room-category').value;
-      const name = document.getElementById('name').value;
-      const phone = document.getElementById('phone').value;
-      const email = document.getElementById('email').value;
-      const guests = Number(document.getElementById('guests').value);
-
-      if (!checkinDate || !checkoutDate || !roomCategory) {
-        alert("チェックイン日・チェックアウト日・部屋カテゴリーは必須です");
-        return;
-      }
-
-      try {
-        // 在庫を dateKey_roomCategory で管理
-        // 例: "2025-02-02_standard"
-        const docId = `${checkinDate}_${roomCategory}`;
-        const roomDocRef = doc(db, "rooms", docId);
-        const reservationsCol = collection(db, "reservations");
-
-        await runTransaction(db, async (transaction) => {
-          const roomSnap = await transaction.get(roomDocRef);
-          if (!roomSnap.exists()) {
-            throw new Error("在庫データが存在しません: " + docId);
-          }
-          const roomData = roomSnap.data();
-          if (roomData.available <= 0) {
-            throw new Error("指定日の在庫が不足しています");
-          }
-          // 在庫を1減らす
-          transaction.update(roomDocRef, {
-            available: roomData.available - 1
-          });
-
-          // 予約コレクションに登録
-          await addDoc(reservationsCol, {
-            checkInDate: checkinDate,
-            checkOutDate: checkoutDate,
-            roomCategory,
-            name,
-            phone,
-            email,
-            guests,
-            createdAt: serverTimestamp()
-          });
-        });
-
-        alert("予約を登録しました");
-        reservationForm.reset();
-
-        // 選択済み日付をリセット
-        checkInDate = null;
-        checkOutDate = null;
-        updateSelectedDates();
-
-      } catch (err) {
-        console.error("予約登録エラー:", err);
-        alert("予約登録に失敗しました: " + err.message);
-      }
-    });
-
-    /******************************************************
-     * 予約台帳 (reservations) リアルタイム表示
-     ******************************************************/
-    const reservationList = document.getElementById('reservation-list');
-    onSnapshot(
-      query(collection(db, "reservations"), orderBy("createdAt", "desc")),
-      (snapshot) => {
-        reservationList.innerHTML = "";
-        snapshot.forEach((docSnap) => {
-          const r = docSnap.data();
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.checkInDate || ""}</td>
-            <td>${r.checkOutDate || ""}</td>
-            <td>${r.roomCategory || ""}</td>
-            <td>${r.name || ""}</td>
-            <td>${r.phone || ""}</td>
-            <td>${r.email || ""}</td>
-            <td>${r.guests || ""}</td>
-          `;
-          reservationList.appendChild(tr);
-        });
-      }
-    );
-
-    /******************************************************
-     * 部屋在庫 (rooms) リアルタイム表示
-     ******************************************************/
-    const inventoryList = document.getElementById('inventory-list');
-    onSnapshot(roomsRef, (snapshot) => {
-      inventoryList.innerHTML = "";
-      snapshot.forEach((docSnap) => {
-        const d = docSnap.data();
-        // docId = "2025-02-02_standard"
-        // fields: { date: "2025-02-02", roomCategory: "standard", available: 3, price: 5000, ... }
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${d.date || docSnap.id}</td>
-          <td>${d.roomCategory || ""}</td>
-          <td>${d.available ?? ""}</td>
-          <td>${d.price ?? ""}</td>
-        `;
-        inventoryList.appendChild(tr);
-      });
-    });
+    // 例: それぞれの getElementById() 参照先が変わらなければ、
+    //     機能的に動作は変わりません。
   </script>
 </body>
 </html>
