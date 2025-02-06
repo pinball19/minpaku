@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>空室カレンダー</title>
   <style>
@@ -82,7 +82,8 @@
       text-align: center;
       font-size: 14px;
       background-color: #f9f9f9;
-      cursor: pointer;
+      cursor: pointer; /* クリック可能に */
+      position: relative; /* ハイライトの重なり用 */
     }
 
     .day-cell.full {
@@ -106,13 +107,19 @@
       margin-top: 5px;
     }
 
+    /* 選択範囲をハイライト表示するクラス */
+    .selected-range {
+      /* 選択した日付に重ねる透明カラー */
+      background-color: rgba(255, 217, 102, 0.6);
+    }
+
     /* 予約フォーム */
     form#reservation-form {
       text-align: left;
       background: #ffffff;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
 
     form#reservation-form h2 {
@@ -155,11 +162,9 @@
       border-radius: 5px;
       cursor: pointer;
     }
-
     #submit-btn:hover {
       background-color: #218838;
     }
-
   </style>
 </head>
 <body>
@@ -179,12 +184,13 @@
     <form id="reservation-form" method="POST" action="/reservation">
       <h2>ご予約情報</h2>
 
-      <!-- 選択した日付をセットするための隠しフィールド -->
-      <input type="hidden" id="selected-date" name="selected-date" />
+      <!-- 選択したチェックイン日・チェックアウト日をセットするための隠しフィールド -->
+      <input type="hidden" id="checkin-date" name="checkin-date" />
+      <input type="hidden" id="checkout-date" name="checkout-date" />
 
       <div class="form-group">
         <label for="room-category">部屋カテゴリー：</label>
-        <select id="room-category" name="room-category">
+        <select id="room-category" name="room-category" required>
           <option value="">選択してください</option>
           <option value="standard">スタンダード</option>
           <option value="deluxe">デラックス</option>
@@ -197,7 +203,7 @@
       </div>
       <div class="form-group">
         <label for="phone">電話番号：</label>
-        <input type="text" id="phone" name="phone" placeholder="例）090-1234-5678" required/>
+        <input type="tel" id="phone" name="phone" placeholder="例）090-1234-5678" required/>
       </div>
       <div class="form-group">
         <label for="email">メールアドレス：</label>
@@ -213,7 +219,7 @@
   </div>
 
   <script>
-    // 空室状況データ
+    // 空室状況データ（一部サンプル）
     const availabilityData = {
       "2025-02-01": { available: 0, price: null },
       "2025-02-02": { available: 3, price: 5000 },
@@ -224,10 +230,17 @@
       "2025-03-05": { available: 2, price: 6000 },
     };
 
-    let currentMonth = 1; // 2月 (JavaScriptでは0=1月,1=2月,...)
+    // 表示する月（2月）と年を初期設定
+    let currentMonth = 1; // 0=1月, 1=2月,...
     let currentYear = 2025;
 
-    // カレンダーを描画する関数
+    // 選択したチェックイン・チェックアウトを管理する変数
+    let checkInDate = null;
+    let checkOutDate = null;
+
+    /**
+     * カレンダーを描画
+     */
     function renderCalendar(year, month) {
       const calendar = document.getElementById("calendar");
       calendar.innerHTML = "";
@@ -252,12 +265,13 @@
         calendar.appendChild(emptyCell);
       }
 
-      // 各日付セルを追加
+      // 各日の日付セルを作成
       for (let day = 1; day <= daysInMonth; day++) {
         const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         const dayCell = document.createElement("div");
         dayCell.classList.add("day-cell");
 
+        // availabilityData による空室情報を表示
         if (availabilityData[dateKey]) {
           const { available, price } = availabilityData[dateKey];
           if (available > 0) {
@@ -275,24 +289,88 @@
             `;
           }
         } else {
+          // 空室情報が無い日
           dayCell.classList.add("no-data");
           dayCell.textContent = day;
         }
 
-        // 日付セルのクリック処理
+        // 日付セルをクリックするとチェックイン・チェックアウトを設定
         dayCell.addEventListener("click", () => {
-          // フォームへスクロール
+          // クリックした日付を選択するロジック
+          selectDate(dateKey);
+          // フォームにスクロール
           document.getElementById("reservation-form").scrollIntoView({ behavior: "smooth" });
-          // 選択した日付を hiddenフィールドにセット
-          const hiddenDateInput = document.getElementById("selected-date");
-          hiddenDateInput.value = dateKey;
         });
+
+        // ハイライトすべき期間ならばクラスを付与
+        if (isInSelectedRange(dateKey)) {
+          dayCell.classList.add("selected-range");
+        }
 
         calendar.appendChild(dayCell);
       }
     }
 
-    // 前の月ボタン
+    /**
+     * 日付選択ロジック
+     * - まだチェックインが未選択: → クリックした日をチェックインに
+     * - チェックインのみ選択済み: → クリックした日をチェックアウトに
+     * - 両方選択済み: → 新しくチェックインを選び直す（チェックアウトはクリア）
+     */
+    function selectDate(dateKey) {
+      // もし両方選択済みなら、一旦リセットして新たにチェックインをセット
+      if (checkInDate && checkOutDate) {
+        checkInDate = dateKey;
+        checkOutDate = null;
+      }
+      // まだチェックインがない場合
+      else if (!checkInDate) {
+        checkInDate = dateKey;
+      }
+      // チェックアウトがまだ無い場合
+      else if (!checkOutDate) {
+        // チェックインとチェックアウトを比較し、順序が逆なら入れ替え
+        if (dateKey < checkInDate) {
+          // dateKeyのほうが早い日付なので、入れ替える
+          checkOutDate = checkInDate;
+          checkInDate = dateKey;
+        } else {
+          checkOutDate = dateKey;
+        }
+      }
+
+      // 選択状況を再描画
+      updateSelectedDates();
+    }
+
+    /**
+     * 指定したdateKeyが、チェックイン日～チェックアウト日の範囲内か判定
+     */
+    function isInSelectedRange(dateKey) {
+      if (checkInDate && checkOutDate) {
+        return (dateKey >= checkInDate && dateKey <= checkOutDate);
+      }
+      if (checkInDate && !checkOutDate) {
+        // チェックアウト未選択の場合、チェックイン日だけハイライトしてもよい
+        return (dateKey === checkInDate);
+      }
+      return false;
+    }
+
+    /**
+     * チェックイン・チェックアウトが変更されたら、
+     * カレンダー再描画 & フォームのhiddenフィールドへ反映
+     */
+    function updateSelectedDates() {
+      // hiddenフィールドにセット
+      document.getElementById("checkin-date").value = checkInDate ? checkInDate : "";
+      document.getElementById("checkout-date").value = checkOutDate ? checkOutDate : "";
+
+      // カレンダーを再描画してハイライトを反映
+      renderCalendar(currentYear, currentMonth);
+    }
+
+    // 「前の月」ボタン
     document.getElementById("prev-month").addEventListener("click", () => {
       currentMonth--;
       if (currentMonth < 0) {
@@ -303,7 +381,7 @@
       renderCalendar(currentYear, currentMonth);
     });
 
-    // 次の月ボタン
+    // 「次の月」ボタン
     document.getElementById("next-month").addEventListener("click", () => {
       currentMonth++;
       if (currentMonth > 11) {
